@@ -82,7 +82,7 @@
       <span class="count" data-count>1/${ms.length}</span><div class="dots">${ms.map((_, i) => `<i class="${i ? '' : 'on'}"></i>`).join('')}</div></div>`;
   }
 
-  const act = (icon, n, cls = '') => `<span class="act ${cls}">${I[icon]}${n != null && n !== '' ? `<b>${short(n)}</b>` : ''}</span>`;
+  const act = (icon, n, cls = '') => `<span class="act act-${icon} ${cls}">${I[icon]}${n != null && n !== '' ? `<b>${short(n)}</b>` : ''}</span>`;
 
   // ---------- Platform renderers ----------
   const R = {};
@@ -137,7 +137,7 @@
       ${f.link ? `<a class="rd-link" href="${esc(f.link)}" target="_blank" rel="noopener noreferrer">${esc(host(f.link))} ↗</a>` : ''}
       ${it.text ? `<div class="rd-text clamp6">${richText(it.text, 'reddit')}</div>` : ''}
       ${it.media.length > 1 ? carousel(it.media, '4 / 3') : it.media[0] ? `<div class="rd-media">${one(it.media[0])}</div>` : ''}
-      <div class="rd-acts"><span class="pill vote">${I.up}<b>${short(m.score) || 'Vote'}</b>${I.down}</span><span class="pill">${I.comment}<b>${short(m.comments) || 0}</b></span><span class="pill">${I.share}<b>Share</b></span><span class="grow"></span>${embedBtn(it)}</div>`;
+      <div class="rd-acts"><span class="pill vote">${I.up}<b>${short(m.score) || 'Vote'}</b>${I.down}</span><span class="pill">${I.comment}<b>${short(m.comments) || 0}</b></span><span class="pill pill-share">${I.share}<b>Share</b></span><span class="grow"></span>${embedBtn(it)}</div>`;
   };
 
   R.youtube = it => {

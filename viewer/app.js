@@ -255,6 +255,9 @@ const rowWatch = new ResizeObserver(entries => { for (const e of entries) fitRow
 // column) widens a column at a time, up to three, while that actually makes it less tall.
 const MAX_TALL = 1.6;
 function balanceCard(el, cols) {
+  // Only text cards: media is height-capped, so widening a photo or video card would just
+  // add empty space around it.
+  if (el.querySelector('.n-body video, .n-body .mgrid, .n-body .vwrap, .n-body img:not(.av):not(.fav)')) return;
   let span = Number(el.style.gridColumnEnd.split(' ')[1]) || 1;
   const limit = Math.min(cols, 3);
   let ratio = el.offsetHeight / Math.max(1, el.offsetWidth);

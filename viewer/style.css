@@ -148,3 +148,25 @@ aside.open { transform: none; visibility: visible; }
   #feed .card:focus-within .fm-strip .meta, #feed .card:focus-within .embed-btn { opacity: 1; pointer-events: auto; }
   #feed .fm-strip:not(:has(.lab, .new-badge)) { padding: 0; border-top: 0; min-height: 4px; }
 }
+
+/* Cards adapt to their own width (container queries), so narrow columns never clip. */
+#feed .card { container-type: inline-size; }
+#feed .x-acts .embed-btn { position: absolute; top: 10px; right: 10px; z-index: 2; }
+@container (max-width: 460px) {
+  #feed .x-row { gap: 8px; padding: 10px 12px 6px; }
+  #feed .x-acts { gap: 2px; }
+  #feed .x-acts .act { min-width: 0; flex: 1 1 0; }
+  #feed .x-acts .grow { display: none; }
+}
+@container (max-width: 300px) {
+  #feed .x-acts .act-views { display: none; }
+  #feed .x-acts .act { font-size: 12px; gap: 2px; }
+  #feed .x-row .av { width: 32px !important; height: 32px !important; }
+}
+@container (max-width: 360px) {
+  #feed .rd-acts { gap: 4px; padding: 4px 10px 10px; flex-wrap: wrap; }
+  #feed .pill { padding: 0 8px; height: 28px; gap: 4px; }
+  #feed .pill.vote { gap: 4px; }
+  #feed .rd-acts .pill-share span, #feed .rd-acts .pill-share b { display: none; }
+}
+#feed .rd-acts .embed-btn { position: absolute; top: 10px; right: 10px; z-index: 2; }
