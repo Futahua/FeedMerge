@@ -9,7 +9,7 @@ import { createHash } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { parseCapture } from './parsers.mjs';
 import { startTagger } from './ai.mjs';
-import { initSources, resolveSource, startPoller } from './sources.mjs';
+import { initSources, resolveSource, startPoller, inspectSource } from './sources.mjs';
 import { initCategories, startCategorizer } from './categorize.mjs';
 import { initCloudflare, startCloudflare, embeddingStories, cloudflareConfig } from './cloudflare.mjs';
 import { transaction } from './sqlite-transaction.mjs';
@@ -17,6 +17,8 @@ import { reparseCaptures } from './reparse.mjs';
 import { expire, retentionSettings, NAVIGATION } from './retention.mjs';
 import { createManagement } from './management.mjs';
 import { initArticles, getArticle } from './article.mjs';
+import { checkedDestination } from './source-fetch.mjs';
+import { normalizeRules, filterSourceLinks } from './source-rules.mjs';
 import { startWikipedia } from './wikipedia.mjs';
 
 const DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -299,10 +301,31 @@ const server = http.createServer(async (req, res) => {
     if (mutating && req.headers['x-feedmerge'] !== '1') return send(res, 403, { error: 'header' });
     if(mutating&&req.headers['x-feedmerge-agent']==='1'&&readConfig().agent?.writes===false)return send(res,403,{error:'Agent writes are disabled by the local owner.'});
 
+    const sourceInspect = /^\/api\/sources\/(\d+)\/(inspect|test-rules)$/.exec(u.pathname);
+    if (sourceInspect && (req.method === 'GET' && sourceInspect[2] === 'inspect' || req.method === 'POST' && sourceInspect[2] === 'test-rules')) {
+      const src = db.prepare('select * from sources where id=?').get(Number(sourceInspect[1]));
+      if (!src) return send(res,404,{error:'Source not found.'});
+      const rules = JSON.parse(src.extraction_rules || '{}');
+      if (sourceInspect[2] === 'test-rules') {
+        const body = JSON.parse(await readBody(req,250000));
+        if (body.html !== undefined && (typeof body.html !== 'string' || body.html.length > 200000)) return send(res,400,{error:'HTML must be at most 200000 characters.'});
+        return send(res,200,await inspectSource(src,body.rules || {},body.html));
+      }
+      return send(res,200,{source:{id:src.id,name:src.name,url:src.url,mode:src.kind,enabled:!!src.enabled,interval_min:src.interval_min,rules:normalizeRules(rules)},
+        last_fetch:src.last_fetch,last_ok:src.last_ok,last_error:src.last_error,last_count:src.last_count,
+        browser_report:JSON.parse(src.browser_report || 'null'),
+        browser_state:src.kind!=='rendered'?'not_browser_mode':!src.enabled?'paused':src.last_fetch===null?'queued_waiting_for_permitted_browser':'last_attempt_recorded',
+        permission_note:'Browser captures use the existing Chrome extension. It must be running, with host permission and any required site login. No credentials are returned.',
+        ...(u.searchParams.get('fetch')==='1'?{fetch:await inspectSource(src,rules)}:{})});
+    }
+
     // Browser-read sources (JavaScript apps): the extension asks which are due, opens them,
     // and sends back the headline links it found.
     if (req.method === 'GET' && u.pathname === '/api/rendered-sources') {
-      return send(res, 200, db.prepare("select id, name, url, interval_min, last_fetch from sources where enabled = 1 and kind = 'rendered'").all());
+      const rows = db.prepare("select id, name, url, interval_min, last_fetch, extraction_rules from sources where enabled = 1 and kind = 'rendered'").all();
+      const checks=await Promise.allSettled(rows.map(async row=>{await checkedDestination(row.url,{signal:AbortSignal.timeout(3000)});return row;}));
+      const allowed=checks.filter(r=>r.status==='fulfilled').map(r=>r.value);
+      return send(res,200,allowed);
     }
     const rs = req.method === 'POST' && /^\/api\/rendered-sources\/(\d+)$/.exec(u.pathname);
     if (rs) {
@@ -314,9 +337,16 @@ const server = http.createServer(async (req, res) => {
         db.prepare('update sources set last_fetch = ?, last_error = ? where id = ?').run(now, String(body.error || 'no links').slice(0, 200), src.id);
         return send(res, 200, { ok: false });
       }
-      const host = new URL(src.url).host.replace(/^www\./, '');
-      const links = body.links.filter(l => { try { return new URL(l.url).host.replace(/^www\./, '') === host && typeof l.title === 'string'; } catch { return false; } })
-        .slice(0, 80).map(l => ({ url: String(l.url), title: l.title.replace(/\s+/g, ' ').trim().slice(0, 300) }));
+      if (body.final_url) {
+        let valid=false;try{valid=new URL(body.final_url).origin===new URL(src.url).origin;}catch{}
+        if(!valid) {
+          db.prepare('update sources set last_fetch=?,last_error=? where id=?').run(now,'Browser navigated to a different origin; capture refused.',src.id);
+          return send(res,409,{error:'Browser navigated to a different origin.'});
+        }
+      }
+      const links = filterSourceLinks(body.links,src.url,JSON.parse(src.extraction_rules || '{}'));
+      const report = {at:now,final_url:src.url,title:String(body.title||'').slice(0,200),candidate_count:Number.isSafeInteger(body.candidate_count)?Math.max(0,body.candidate_count):null,extracted_count:links.length,sample:links.slice(0,12),warning:links.length?null:'Browser returned no matching headlines; inspect rules, login and host permission.'};
+      db.prepare('update sources set browser_report=? where id=?').run(JSON.stringify(report),src.id);
       const r = ingest({ platform: 'web', kind: 'links', url: src.url, pageUrl: `source:${src.name}`, capturedAt: now, payload: JSON.stringify(links) });
       if (r.added) log('source', src.name, `+${r.added}/${r.parsed}`);
       db.prepare('update sources set last_fetch = ?, last_ok = ?, last_error = null, last_count = ? where id = ?').run(now, now, r.parsed, src.id);
@@ -356,8 +386,13 @@ const server = http.createServer(async (req, res) => {
       if(agentAction[1]==='preview'&&body.operation==='source_control'&&body.input?.action==='add'){
         const cfg=readConfig();body.input.resolved=await resolveSource(body.input.input,{locale:body.input.locale||cfg.news?.locale,rsshub:cfg.rsshub||'http://127.0.0.1:1200'});
       }
+      if(agentAction[1]==='preview' && body.operation==='source_control' && (body.input?.action==='capture'||body.input?.action==='configure'&&body.input?.mode==='rendered')) {
+        const src=db.prepare('select url from sources where id=?').get(body.input.id);
+        if(!src)return send(res,404,{error:'Source not found.'});
+        await checkedDestination(src.url,{signal:AbortSignal.timeout(5000)});
+      }
       const result = agentAction[1] === 'preview' ? management.preview(body.operation, body.input || {})
-        : agentAction[1] === 'apply' ? management.apply(body.preview_id,body.operation) : management.undo(body.receipt_id, body.apply === true);
+        : agentAction[1] === 'apply' ? management.apply(body.preview_id,body.operation,body.expected_action) : management.undo(body.receipt_id, body.apply === true);
       return send(res, 200, result);
     }
     if (req.method === 'GET' && u.pathname === '/media') return mediaProxy(res, u.searchParams.get('u'));

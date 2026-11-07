@@ -56,15 +56,33 @@ test('actual isolated API enforces rename preconditions, agent provenance and ma
     // A browser-read source: only same-site headline links from the extension are kept.
     const { DatabaseSync } = await import('node:sqlite');
     const side = new DatabaseSync(path.join(dir, 'feed.db'));
-    const sid = side.prepare("insert into sources(kind, name, url, interval_min, created) values ('rendered', 'App site (browser)', 'https://app.example.test/', 60, 1)").run().lastInsertRowid;
+    const sid = side.prepare("insert into sources(kind, name, url, interval_min, created) values ('rendered', 'App site (browser)', 'https://1.1.1.1/', 60, 1)").run().lastInsertRowid;
     side.close();
     assert.equal((await api('/api/rendered-sources')).value.length, 1);
     const got = (await api(`/api/rendered-sources/${sid}`, { links: [
-      { url: 'https://app.example.test/2026/11/7/first-story', title: 'A first story drawn by the app in the browser' },
+      { url: 'https://1.1.1.1/2026/11/7/first-story', title: 'A first story drawn by the app in the browser' },
       { url: 'https://elsewhere.test/ad', title: 'An outside link that must not be kept at all' },
     ] })).value;
     assert.equal(got.parsed, 1);
     assert.equal((await api('/api/items?ads=1&limit=200')).value.filter(x => x.context === 'App site (browser)').length, 1);
+    const inspected=(await api(`/api/sources/${sid}/inspect`)).value;
+    assert.equal(inspected.browser_report.extracted_count,1);
+    const tested=(await api(`/api/sources/${sid}/test-rules`,{rules:{minTitleLength:5,includePaths:['/news/']},html:'<a href="/news/one">Short news</a><a href="/login">Login form</a>'})).value;
+    assert.equal(tested.extracted_count,1);
+    const plan=(await api('/api/agent/preview',{operation:'source_control',input:{action:'configure',id:Number(sid),mode:'page',rules:{minTitleLength:5,includePaths:['/news/']}}})).value;
+    assert.equal((await api(`/api/sources/${sid}/inspect`)).value.source.mode,'rendered');
+    assert.equal((await api('/api/agent/apply',{operation:'source_control',preview_id:plan.preview_id,expected_action:'remove'})).status,409);
+    const applied=(await api('/api/agent/apply',{operation:'source_control',preview_id:plan.preview_id,expected_action:'configure'})).value;
+    assert.equal((await api(`/api/sources/${sid}/inspect`)).value.source.rules.minTitleLength,5);
+    await api('/api/agent/undo',{receipt_id:applied.receipt_id,apply:true});
+    assert.equal((await api(`/api/sources/${sid}/inspect`)).value.source.mode,'rendered');
+    const capture=(await api('/api/agent/preview',{operation:'source_control',input:{action:'capture',id:Number(sid)}})).value;
+    await api('/api/agent/apply',{operation:'source_control',preview_id:capture.preview_id,expected_action:'capture'});
+    assert.equal((await api(`/api/sources/${sid}/inspect`)).value.browser_state,'queued_waiting_for_permitted_browser');
+    assert.equal((await api(`/api/rendered-sources/${sid}`,{links:[],final_url:'https://elsewhere.test/private'})).status,409);
+    const probe=new DatabaseSync(path.join(dir,'feed.db'));probe.prepare("insert into sources(kind,name,url,interval_min,created) values ('rendered','private','http://127.0.0.1:12345/',60,1)").run();probe.close();
+    assert.equal((await api('/api/rendered-sources')).value.length,1); // private targets never enter the browser queue
+
   } finally {
     child.kill(); await new Promise(resolve=>child.exitCode!==null?resolve():child.once('exit',resolve));
     await rm(dir,{recursive:true,force:true});

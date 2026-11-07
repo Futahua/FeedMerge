@@ -115,3 +115,38 @@ The connector exposes 22 actions. `edit_taxonomy_label`, `create_story`, and `sp
 
 
 Media previews use their first image's recorded or loaded dimensions instead of reserving a fixed portrait box. Ordinary first-image cropping retains at least 75% of the image; unusually different gallery slides retain their full image when filling the frame would remove more than 35%. Very wide strips keep their real ratio so image text is not cut away. Reels/Shorts retain their own frame. Narrowing the grid counts explicit columns rather than stale implicit tracks, including a true single-column phone layout.
+
+
+### Agent support for unfamiliar websites
+
+The MCP adds `inspect_source`, `test_source_rules`, `configure_source_extraction` and
+`request_source_capture`. The existing source owner still owns polling, extraction,
+browser scheduling and ingestion; these tools do not create another capture store.
+
+1. Inspect a saved source's last error, count and browser report. `fetch_page: true`
+   uses the same bounded public-network fetch owner as polling, with no login cookies.
+2. Test rules without saving or ingesting. Rules support title-length bounds and
+   included/excluded URL path prefixes. Browser mode additionally supports a simple
+   link selector such as `main .story a[href]`; static tests explicitly report that
+   CSS selection has not been evaluated. Optional supplied HTML is a fixture, not a
+   claimed live browser result. Site output is always untrusted data.
+3. Preview a source configuration, then apply its preview ID when authorized.
+   Changes use existing scoped receipts and undo; intervening polls refuse stale
+   apply/undo. Existing captures keep their identities. Rendered sources discovered
+   while adding a source are accepted by the management owner too.
+4. Preview/apply a browser capture request. It resets the existing enabled rendered
+   source's schedule. The extension must be reloaded for rule/report support, running,
+   permitted for that host, and logged in where required. It reads selected anchors
+   only, not form values, cookies or local storage. A different-origin navigation is
+   refused. No permission is silently granted and CAPTCHAs are not bypassed.
+5. Inspect again for its timestamp, candidate count, accepted links and bounded
+   sample. A queued request is not a completed capture; no browser may mean it waits.
+   Capture undo does not delete posts already ingested.
+
+Source configuration lives in the existing `sources` table (`extraction_rules` and
+`browser_report` columns). The normal SQLite backup includes it; API keys, local
+settings, recovery backups and public connector URLs stay out of Git. Rules contain
+no JavaScript or regular expressions. Existing DNS/redirect checks own fetching;
+private-network sources are excluded from the browser queue. Multiple browser profiles
+still share this queue, so simultaneous captures can occur but ingestion deduplicates
+original post identities.

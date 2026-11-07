@@ -159,22 +159,21 @@ async function refreshTick(force) {
 // Chrome asks once per site (popup) before the extension may read it.
 const RENDER_WAIT_MS = 12_000;
 
-function collectHeadlines() {
+function collectHeadlines(rules = {}, expectedOrigin) {
+  if (expectedOrigin && location.origin !== expectedOrigin) throw Error('Browser changed origin; refused.');
   const host = location.host.replace(/^www\./, '');
   const seen = new Set(), out = [];
-  for (const a of document.querySelectorAll('a[href]')) {
-    let u;
-    try { u = new URL(a.href); } catch { continue; }
-    if (u.host.replace(/^www\./, '') !== host || u.pathname.split('/').filter(Boolean).length < 1) continue;
-    const title = (a.innerText || a.textContent || a.title || '').replace(/\s+/g, ' ').trim();
-    if (title.length < 25 || title.length > 300) continue;
-    u.hash = '';
-    if (seen.has(u.href)) continue;
-    seen.add(u.href);
-    out.push({ url: u.href, title });
-    if (out.length >= 80) break;
+  const nodes = document.querySelectorAll(rules.linkSelector || 'a[href]');
+  for (const a of nodes) {
+    if (a.tagName !== 'A' || !a.href) continue;
+    let u;try {u = new URL(a.href);} catch {continue;}
+    if (!['http:','https:'].includes(u.protocol) || u.username || u.password || u.host.replace(/^www\./,'') !== host || !u.pathname.split('/').filter(Boolean).length) continue;
+    const title=(a.innerText || a.textContent || a.title || '').replace(/\s+/g,' ').trim();
+    if(title.length < (rules.minTitleLength ?? 25) || title.length > (rules.maxTitleLength ?? 300))continue;
+    if(rules.includePaths?.length && !rules.includePaths.some(p=>u.pathname.startsWith(p)) || rules.excludePaths?.some(p=>u.pathname.startsWith(p)))continue;
+    u.hash='';if(seen.has(u.href))continue;seen.add(u.href);out.push({url:u.href,title});if(out.length>=80)break;
   }
-  return out;
+  return {links:out,title:document.title,final_url:location.href,candidate_count:nodes.length};
 }
 
 async function renderedDue() {
@@ -206,8 +205,8 @@ async function readRendered(src) {
   setTimeout(async () => {
     let body;
     try {
-      const [r] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: collectHeadlines });
-      body = { links: r?.result || [] };
+      const [r] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: collectHeadlines, args: [JSON.parse(src.extraction_rules || '{}'), new URL(src.url).origin] });
+      body = r?.result || { error: 'Browser returned no result.' };
     } catch (e) { body = { error: String(e?.message || e) }; }
     try { await fetch(SERVER + '/api/rendered-sources/' + src.id, { method: 'POST', headers: { 'content-type': 'application/json', 'x-feedmerge': '1' }, body: JSON.stringify(body) }); } catch {}
     await finishOpen();

@@ -1,3 +1,4 @@
+import { normalizeRules } from './source-rules.mjs';
 import { randomUUID } from 'node:crypto';
 import { transaction } from './sqlite-transaction.mjs';
 
@@ -57,15 +58,25 @@ export function createManagement(db) {
       return normalized;
     }
     if(operation==='source_control'){
-      if(!['add','pause','resume','remove','refresh'].includes(input.action))throw fail('Unknown source action.');
+      if(!['add','pause','resume','remove','refresh','configure','capture'].includes(input.action))throw fail('Unknown source action.');
       if(input.action==='add'){
-        const resolved=input.resolved;if(!resolved||!['feed','page'].includes(resolved.kind)||typeof resolved.url!=='string'||typeof resolved.name!=='string')throw fail('Source must be resolved by the fetch owner first.');
+        const resolved=input.resolved;if(!resolved||!['feed','page','rendered'].includes(resolved.kind)||typeof resolved.url!=='string'||typeof resolved.name!=='string')throw fail('Source must be resolved by the fetch owner first.');
         if(db.prepare('select id from sources where url=?').get(resolved.url))throw fail('Source already exists.');
         const id=input.id??(db.prepare('select coalesce(max(id),0)+1 id from sources').get().id);
         if(!Number.isSafeInteger(id)||db.prepare('select id from sources where id=?').get(id))throw fail('Source ID changed.');
         return {action:'add',id,resolved:{url:resolved.url,kind:resolved.kind,name:resolved.name.slice(0,120)},interval:Math.max(10,Math.min(10080,Number(input.interval)||30))};
       }
       if(!Number.isSafeInteger(input.id)||!db.prepare('select id from sources where id=?').get(input.id))throw fail('Source not found.');
+      if(input.action==='configure') {
+        if(!['page','rendered'].includes(input.mode))throw fail('Choose page or rendered mode.');
+        const rules=normalizeRules(input.rules);
+        if(input.mode==='page' && rules.linkSelector!=='a[href]')throw fail('CSS selectors require rendered mode.');
+        return {action:input.action,id:input.id,mode:input.mode,rules};
+      }
+      if(input.action==='capture') {
+        const src=db.prepare('select kind,enabled from sources where id=?').get(input.id);
+        if(src.kind!=='rendered'||!src.enabled)throw fail('Browser capture requires an enabled rendered source. Configure it first.');
+      }
       return {action:input.action,id:input.id};
     }
     if (operation === 'merge_stories') {
@@ -130,7 +141,8 @@ export function createManagement(db) {
     }else if(operation==='source_control'){
       if(input.action==='add')db.prepare('insert into sources(id,kind,name,url,interval_min,created) values (?,?,?,?,?,?)').run(input.id,input.resolved.kind,input.resolved.name,input.resolved.url,input.interval,stamp);
       else if(input.action==='remove')db.prepare('delete from sources where id=?').run(input.id);
-      else if(input.action==='refresh')db.prepare('update sources set last_fetch=null,last_hash=null where id=?').run(input.id);
+      else if(input.action==='configure')db.prepare('update sources set kind=?,extraction_rules=?,last_fetch=null,last_hash=null where id=?').run(input.mode,JSON.stringify(input.rules),input.id);
+      else if(input.action==='refresh'||input.action==='capture')db.prepare('update sources set last_fetch=null,last_hash=null where id=?').run(input.id);
       else db.prepare('update sources set enabled=? where id=?').run(input.action==='resume'?1:0,input.id);
     } else if (operation === 'update_post_labels') {
       for (const post of input.post_ids) for (const label of input.label_ids) {
@@ -213,14 +225,16 @@ export function createManagement(db) {
     });
   }
 
-  function apply(id, expectedOperation) {
+  function apply(id, expectedOperation, expectedAction) {
     return transaction(db, () => {
-      const prior = db.prepare('select id,operation,undone from agent_receipts where preview_id=?').get(id);
+      const prior = db.prepare('select id,operation,undone,input from agent_receipts where preview_id=?').get(id);
       if(prior&&expectedOperation&&prior.operation!==expectedOperation)throw fail('Preview belongs to a different operation.');
+      if(prior && expectedAction && JSON.parse(prior.input).action !== expectedAction)throw fail('Preview belongs to a different source action.');
       if (prior) return { receipt_id: prior.id, operation: prior.operation, replay: true, undone: !!prior.undone };
       const plan = db.prepare('select * from agent_previews where id=?').get(id);
       if (!plan || plan.expires < Date.now()) throw fail('Preview missing or expired.');
       if(expectedOperation&&plan.operation!==expectedOperation)throw fail('Preview belongs to a different operation.');
+      if(expectedAction && JSON.parse(plan.input).action !== expectedAction)throw fail('Preview belongs to a different source action.');
       const input = normalize(plan.operation, JSON.parse(plan.input)), before = snapshot(plan.operation, input);
       if (!same(before, JSON.parse(plan.before_json))) throw fail('Affected records changed since preview.');
       const created = Date.now(), receipt = randomUUID();

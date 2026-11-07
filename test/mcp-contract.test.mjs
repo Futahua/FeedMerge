@@ -22,6 +22,16 @@ test('taxonomy tools preview without writes, require explicit apply, and carry r
     env: { ...process.env, FEEDMERGE_URL: `http://127.0.0.1:${api.address().port}` }, stderr: 'pipe' });
   try {
     await client.connect(transport);
+    const names=(await client.listTools()).tools.map(t=>t.name);
+    for(const name of ['inspect_source','test_source_rules','configure_source_extraction','request_source_capture'])assert(names.includes(name));
+    await client.callTool({name:'inspect_source',arguments:{source_id:1}});assert.equal(writes.length,0);
+    await client.callTool({name:'test_source_rules',arguments:{source_id:1,rules:{minTitleLength:5},html:'<a href="/news/one">Story</a>'}});
+    assert.equal(writes[0].html,'<a href="/news/one">Story</a>');writes.length=0;
+    await client.callTool({name:'configure_source_extraction',arguments:{source_id:1,mode:'rendered',rules:{linkSelector:'main a[href]'}}});
+    assert.equal(writes[0].operation,'source_control');assert.equal(writes[0].input.action,'configure');writes.length=0;
+    await client.callTool({name:'request_source_capture',arguments:{source_id:1,preview_id:'11111111-1111-4111-8111-111111111111'}});
+    assert.equal(writes[0].expected_action,'capture');writes.length=0;
+
     await client.callTool({ name: 'propose_label', arguments: { layer: 'topic', name: 'New topic' } });
     await client.callTool({ name: 'rename_story', arguments: { label_id: 1, name: 'Updated story' } });
     assert.equal(writes.length, 0);

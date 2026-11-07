@@ -1,6 +1,7 @@
 // Web sources (news sites, blogs, topic searches, RSSHub routes, plain pages) polled by the
 // server itself, so they stay fresh without any browser open.
 import { createHash } from 'node:crypto';
+import { normalizeRules, filterSourceLinks } from './source-rules.mjs';
 import { fetchSource } from './source-fetch.mjs';
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Safari/537.36 FeedMerge/0.2';
@@ -17,6 +18,9 @@ export function initSources(db) {
   db.exec(`create table if not exists sources (
     id integer primary key, kind text, name text, url text unique, interval_min integer default 30, enabled integer default 1,
     created integer, last_fetch integer, last_ok integer, last_error text, etag text, last_modified text, last_hash text, last_count integer)`);
+  for (const column of ['extraction_rules text', 'browser_report text']) {
+    try { db.exec('alter table sources add column ' + column); } catch (e) { if (!/duplicate column/.test(e.message)) throw e; }
+  }
 }
 
 async function get(url, extraHeaders = {}, options = {}) {
@@ -97,23 +101,29 @@ export function appShell(html) {
 }
 
 // Headline-like links on a page with no feed: long anchor text, same site, deeper than the home page.
-export function extractLinks(html, base) {
-  const origin = new URL(base);
-  const seen = new Set();
-  const out = [];
+export function extractLinks(html, base, rules = {}) {
+  const r = normalizeRules(rules);
+  if (r.linkSelector !== 'a[href]') throw Error('Custom CSS selectors require browser mode.');
+  const candidates = [];
+  // Navigation inside scripts/styles is not visible content.
+  html = html.replace(/<(script|style|noscript)\b[^>]*>[\s\S]*?<\/\1>/gi, ' ');
   for (const m of html.matchAll(/<a\b[^>]*href=["']([^"'#]+)["'][^>]*>([\s\S]*?)<\/a>/gi)) {
-    let u;
-    try { u = new URL(decode(m[1]), base); } catch { continue; }
-    if (u.host.replace(/^www\./, '') !== origin.host.replace(/^www\./, '') || u.pathname.split('/').filter(Boolean).length < 1) continue;
-    const title = decode(m[2].replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim();
-    if (title.length < 25 || title.length > 300) continue;
-    u.hash = '';
-    if (seen.has(u.href)) continue;
-    seen.add(u.href);
-    out.push({ url: u.href, title });
-    if (out.length >= 80) break;
+    candidates.push({url:decode(m[1]), title:decode(m[2].replace(/<[^>]+>/g, ' '))});
   }
-  return out;
+  return filterSourceLinks(candidates, base, r);
+}
+
+// Uses the same checked fetch and extractor as polling, never an agent-owned fetcher.
+export async function inspectSource(src, rules = {}, suppliedHtml) {
+  const r = normalizeRules(rules);
+  const fetched = suppliedHtml === undefined ? await get(src.url) : null;
+  const html = suppliedHtml ?? fetched.text;
+  const finalUrl = fetched?.res.url || src.url;
+  const requiresBrowser = r.linkSelector !== 'a[href]';
+  const links = requiresBrowser ? [] : extractLinks(html, finalUrl, r);
+  const visible = html.replace(/<(script|style|noscript)\b[^>]*>[\s\S]*?<\/\1>/gi,' ').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
+  return {input:suppliedHtml === undefined?'checked_fetch':'supplied_html',status:fetched?.res.status ?? null,final_url:finalUrl,title:feedTitle(html),app_shell:appShell(html),visible_characters:visible.length,script_count:(html.match(/<script\b/gi)||[]).length,rules:r,extracted_count:links.length,links,
+    warning:requiresBrowser?'CSS selection must be tested by a browser capture; these links were not evaluated.':fetched&&!fetched.res.ok?'HTTP error; no source changes were made.':!links.length?'No matching headlines. May require browser permission/login or different extraction rules.':null};
 }
 
 // Poll due sources; store a raw capture only when the content changed.
@@ -131,7 +141,7 @@ export function startPoller(db, ingest, log, readConfig) {
       const { res, text } = await get(src.url, headers, { trustedOrigin: rsshub });
       if (res.status === 304) return mark.run(now, now, null, null, null, null, null, src.id);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const payload = src.kind === 'page' ? JSON.stringify(extractLinks(text, res.url || src.url)) : text;
+      const payload = src.kind === 'page' ? JSON.stringify(extractLinks(text, res.url || src.url, JSON.parse(src.extraction_rules || '{}'))) : text;
       const hash = sha(payload);
       let added = null;
       if (hash !== src.last_hash) {
