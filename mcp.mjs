@@ -65,10 +65,12 @@ server.registerTool('search_posts', {
     saved: z.boolean().optional(),
     include_ads: z.boolean().optional(),
     context: z.string().optional(),
-    sort: z.enum(['recent', 'published', 'repeated']).optional(),
+    sort: z.enum(['recent', 'published', 'repeated', 'shuffle']).optional().describe('shuffle = a random mix, like the viewer Shuffle button'),
+    seed: z.number().int().min(1).max(1000000000).optional().describe('With sort=shuffle: the seed returned by the previous page, to keep the same order while paging'),
   },
   annotations: { readOnlyHint: true },
 }, async a => {
+  const seed = a.sort === 'shuffle' ? a.seed || 1 + Math.floor(Math.random() * 1000000000) : undefined;
   const p = new URLSearchParams({ limit: String(a.limit || 20) });
   if (a.query) p.set('q', a.query);
   if (a.platform) p.set('platform', a.platform);
@@ -81,8 +83,9 @@ server.registerTool('search_posts', {
   if (a.include_ads) p.set('ads', '1');
   if (a.context) p.set('context', a.context);
   if (a.sort) p.set('sort', a.sort);
+  if (seed) p.set('seed', String(seed));
   const items = await api('/api/items?' + p);
-  return out({ count: items.length, offset: a.offset || 0, next_offset: items.length === (a.limit || 20) ? (a.offset || 0) + items.length : null, posts: items.map(compact) }, UNTRUSTED);
+  return out({ count: items.length, offset: a.offset || 0, next_offset: items.length === (a.limit || 20) ? (a.offset || 0) + items.length : null, ...(seed ? { seed } : {}), posts: items.map(compact) }, UNTRUSTED);
 });
 
 server.registerTool('list_labels', {
