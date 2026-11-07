@@ -65,7 +65,7 @@ The scheduled task "FeedMerge backup" runs `scripts/backup.mjs` hourly (and at l
 copy of `data/feed.db` with SQLite's `VACUUM INTO` while FeedMerge keeps running, checks it with
 `PRAGMA integrity_check`, and stores it gzipped in `D:\Programs\FeedMergeBackups\hourly\<time>` (48 hourly +
 30 daily, about 9 MB each). The image cache (`data/media`, whose source links expire) is mirrored to
-`D:\Programs\FeedMergeBackups\media`. Log: `D:\Programs\FeedMergeBackupsackup.log`.
+`D:\Programs\FeedMergeBackups\media`. Log: `D:\Programs\FeedMergeBackups\backup.log`.
 
 To restore: stop FeedMerge, gunzip a copy over `data/feed.db`, delete `feed.db-wal` and `feed.db-shm`, and
 copy `media` back into `data/media`. Both copies live on SlopTop's own disk: they cover a bad reparse or a
