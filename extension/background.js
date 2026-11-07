@@ -81,6 +81,7 @@ const TARGETS = {
   x: { url: 'https://x.com/home', hours: 3 },
   facebook: { url: 'https://www.facebook.com/', hours: 4 },
   instagram: { url: 'https://www.instagram.com/', hours: 4 },
+  threads: { url: 'https://www.threads.com/', hours: 4 },
   pinterest: { url: 'https://www.pinterest.com/', hours: 18 },
   tiktok: { url: 'https://www.tiktok.com/foryou', hours: 4 },
 };
