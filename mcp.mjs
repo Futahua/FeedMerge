@@ -55,7 +55,7 @@ server.registerTool('search_posts', {
   description: 'Find posts by words, platform, label, review status or recency. Returns up to 50 posts with their current labels.',
   inputSchema: {
     query: z.string().optional().describe('Words to search for (full-text)'),
-    platform: z.enum(['x', 'youtube', 'tiktok', 'instagram', 'threads', 'bluesky', 'reddit', 'web']).optional(),
+    platform: z.enum(['x', 'youtube', 'tiktok', 'facebook', 'instagram', 'threads', 'bluesky', 'reddit', 'web']).optional(),
     label_id: z.number().int().optional().describe('Only posts carrying this label (ids from list_labels or feed_overview)'),
     needs_review: z.boolean().optional().describe('Only posts with uncertain machine labels'),
     since_hours: z.number().positive().max(24 * 60).optional().describe('Only posts captured in the last N hours'),

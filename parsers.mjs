@@ -98,6 +98,17 @@ function contextFromPage(platform, pageUrl) {
       if (p.startsWith('/explore')) return 'explore';
       if (p.startsWith('/p/')) return 'post';
       return 'profile';
+    case 'facebook':
+      if (p === '/' || p === '/home.php') return 'home';
+      if (p.startsWith('/groups/feed')) return 'groups';
+      if (/^\/groups\/[^/]+\/(posts|permalink)\//.test(p)) return 'thread';
+      if (p.startsWith('/groups/')) return 'group';
+      if (p.startsWith('/watch')) return 'watch';
+      if (p.startsWith('/reel')) return 'reels';
+      if (p.startsWith('/search')) return 'search';
+      if (p.startsWith('/marketplace') || p.startsWith('/notifications') || p.startsWith('/messages')) return 'other';
+      if (/^\/(permalink\.php|story\.php|photo|[^/]+\/(posts|videos|photos)\/)/.test(p)) return 'thread';
+      return 'profile';
     case 'threads':
       if (p === '/' || p === '/for_you') return 'for-you';
       if (p.startsWith('/following')) return 'following';
@@ -320,6 +331,90 @@ function metaPosts(doc, out, makeUrl) {
 const parseInstagram = (doc, cap, now, out) => metaPosts(doc, out, n => `https://www.instagram.com/${n.product_type === 'clips' ? 'reel' : 'p'}/${n.code}/`);
 const parseThreads = (doc, cap, now, out) => metaPosts(doc, out, n => `https://www.threads.com/@${n.user.username}/post/${n.code}`);
 
+// ---------- Facebook ----------
+// Feed stories arrive as Relay GraphQL (streamed, newline-separated). The layout around a
+// story changes often, so fields are found by their own names anywhere inside the story
+// rather than by fixed paths. A shared post's original (attached_story) gives text and
+// media only when the sharer added none; comments under `feedback` never count as content.
+function fbFind(root, get, skip = FB_OWN) {
+  const stack = [root];
+  let guard = 0;
+  while (stack.length && guard++ < 200_000) {
+    const n = stack.pop();
+    if (!n || typeof n !== 'object') continue;
+    const v = Array.isArray(n) ? undefined : get(n);
+    if (v !== undefined && v !== null && v !== '') return v;
+    const keys = Array.isArray(n) ? n.keys() : Object.keys(n);
+    const vals = [];
+    for (const k of keys) if (!(typeof k === 'string' && skip.has(k)) && n[k] && typeof n[k] === 'object') vals.push(n[k]);
+    for (let i = vals.length - 1; i >= 0; i--) stack.push(vals[i]);
+  }
+}
+const FB_OWN = new Set(['attached_story', 'feedback', 'comet_ufi_summary_and_actions_renderer', 'top_level_comments', 'comment_list_renderer']);
+const FB_CONTENT = new Set(['feedback', 'comet_ufi_summary_and_actions_renderer', 'top_level_comments', 'comment_list_renderer', 'actors', 'actor_photo', 'owning_profile']);
+const FB_ALL = new Set();
+
+function fbMedia(story) {
+  const seen = new Set(), out = [];
+  const add = m => { if (m?.url && !seen.has(m.id || m.url) && out.length < 10) { seen.add(m.id || m.url); out.push(clean(m)); } };
+  fbFind(story, n => {
+    const t = n.__typename;
+    if (t === 'Video' || n.playable_url || n.browser_native_hd_url) {
+      const thumb = n.preferred_thumbnail?.image?.uri || n.thumbnailImage?.uri || n.image?.uri || n.first_frame_thumbnail;
+      const video = n.browser_native_hd_url || n.playable_url_quality_hd || n.browser_native_sd_url || n.playable_url;
+      if (thumb || video) add({ id: n.id, type: 'video', url: thumb, video, w: n.width || n.original_width, h: n.height || n.original_height, duration: n.playable_duration_in_ms || (n.length_in_second ? n.length_in_second * 1000 : undefined) });
+      return;
+    }
+    const im = n.photo_image || n.viewer_image || (t === 'Photo' ? n.image : undefined);
+    if (im?.uri) add({ id: n.id, type: 'image', url: im.uri, w: im.width, h: im.height });
+  }, FB_CONTENT);
+  return out;
+}
+
+function parseFacebook(doc, cap, now, out) {
+  walk(doc, n => {
+    if (n.__typename !== 'Story' || typeof n.post_id !== 'string' || !/^\d+$/.test(n.post_id)) return;
+    const shared = n.attached_story || fbFind(n, x => x.attached_story, FB_ALL);
+    let text = fbFind(n, x => typeof x.message?.text === 'string' ? x.message.text : undefined);
+    let media = fbMedia({ ...n, attached_story: undefined });
+    if (shared && !media.length) media = fbMedia(shared);
+    if (shared && !text) text = fbFind(shared, x => typeof x.message?.text === 'string' ? x.message.text : undefined);
+    const actor = fbFind(n, x => Array.isArray(x.actors) && x.actors[0]?.name ? x.actors[0] : undefined) || {};
+    const avatar = fbFind(n, x => Array.isArray(x.actors) && x.actors[0]?.profile_picture?.uri ? x.actors[0].profile_picture.uri : undefined)
+      || fbFind(n, x => x.profile_picture?.uri);
+    if (!text && !media.length) return 'skip';
+    const time = fbFind(n, x => typeof x.creation_time === 'number' ? x.creation_time : undefined);
+    const url = fbFind(n, x => typeof x.wwwURL === 'string' ? x.wwwURL : undefined)
+      || fbFind(n, x => typeof x.permalink_url === 'string' ? x.permalink_url : undefined)
+      || `https://www.facebook.com/${n.post_id}`;
+    const linkAtt = fbFind(n, x => typeof x.external_url === 'string' ? x : undefined, FB_CONTENT);
+    const reactions = fbFind(n, x => num(x.reaction_count?.count) ?? num(x.reactors?.count), FB_ALL);
+    const comments = fbFind(n, x => num(x.comment_rendering_instance?.comments?.total_count) ?? num(x.comments?.total_count) ?? num(x.total_comment_count), FB_ALL);
+    const shares = fbFind(n, x => num(x.share_count?.count) ?? num(x.reshares?.count), FB_ALL);
+    const views = fbFind(n, x => num(x.video_view_count) ?? num(x.play_count), FB_ALL);
+    const ad = fbFind(n, x => x.sponsored_data || x.category === 'SPONSORED' || x.is_sponsored === true ? true : undefined);
+    out.push({
+      nativeId: n.post_id,
+      author: actor.name,
+      authorName: actor.name,
+      text: text || '',
+      url,
+      media,
+      publishedAt: time ? time * 1000 : undefined,
+      metrics: clean({ likes: reactions, comments, reposts: shares, views }),
+      flags: clean({
+        ad: ad || undefined,
+        avatar,
+        shared: shared ? true : undefined,
+        reel: /\/reel\//.test(url) || undefined,
+        link: linkAtt?.external_url,
+        linkTitle: linkAtt?.title_with_entities?.text || linkAtt?.title?.text || undefined,
+      }),
+    });
+    return 'skip';
+  });
+}
+
 // ---------- Bluesky ----------
 const BSKY_CTX = { getTimeline: 'following', getFeed: 'feed', getListFeed: 'list', getAuthorFeed: 'profile', getPostThread: 'thread', searchPosts: 'search' };
 
@@ -437,4 +532,4 @@ function parseFeedText(text, cap, out) {
   }
 }
 
-const PARSERS = { web: parseWeb, x: parseX, youtube: parseYouTube, tiktok: parseTikTok, instagram: parseInstagram, threads: parseThreads, bluesky: parseBluesky, reddit: parseReddit };
+const PARSERS = { web: parseWeb, x: parseX, youtube: parseYouTube, tiktok: parseTikTok, facebook: parseFacebook, instagram: parseInstagram, threads: parseThreads, bluesky: parseBluesky, reddit: parseReddit };

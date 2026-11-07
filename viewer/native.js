@@ -215,6 +215,16 @@
       <div class="ig-foot">${embedBtn(it)}</div>`;
   };
 
+  R.facebook = it => {
+    const m = it.metrics, f = it.flags;
+    const media = it.media.filter(x => x.url);
+    return `<div class="fb-head">${avatar(it, 40)}<div><b>${esc(it.authorName || it.author)}</b><span class="mute">${f.ad ? 'Sponsored' : ago(it.publishedAt)}${f.shared ? ' · shared' : ''}</span></div></div>
+      ${it.text ? `<div class="fb-text clamp6">${richText(it.text, 'facebook')}</div>` : ''}
+      ${media.length ? `<div class="fb-media">${media.length > 4 ? carousel(media, '1 / 1') : grid(media)}</div>` : ''}
+      ${f.link ? `<a class="linkcard" href="${esc(f.link)}" target="_blank" rel="noopener noreferrer"><div><span class="mute">${esc(host(f.link))}</span><b>${esc(f.linkTitle || '')}</b></div></a>` : ''}
+      <div class="fb-stats">${act('like', m.likes)}${act('comment', m.comments)}${act('share', m.reposts)}${m.views != null ? act('views', m.views) : ''}<span class="grow"></span>${embedBtn(it)}</div>`;
+  };
+
   // General pages, kept minimal: the site's icon and whichever is shorter, its name or its
   // address, then the title (and summary/picture if any).
   R.web = it => {

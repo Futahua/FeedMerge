@@ -19,6 +19,7 @@
 .p-bluesky { --c-bg: #fff; --c-fg: #0b0f14; --c-muted: #42576c; --c-line: #d4dbe2; --c-hover: #f1f3f5; --c-link: #1083fe; }
 .p-threads { --c-bg: #fff; --c-fg: #000; --c-muted: #999; --c-line: #e5e5e5; --c-hover: #f5f5f5; --c-link: #0095f6; }
 .p-instagram { --c-bg: #fff; --c-fg: #000; --c-muted: #737373; --c-line: #dbdbdb; --c-hover: #fafafa; --c-link: #00376b; }
+.p-facebook { --c-bg: #fff; --c-fg: #080809; --c-muted: #65686c; --c-line: #ced0d4; --c-hover: #f2f2f2; --c-link: #0064d1; font-family: "Segoe UI Historic", "Segoe UI", -apple-system, system-ui, sans-serif; font-size: 15px; }
 .p-reddit { --c-bg: #fff; --c-fg: #0f1a1c; --c-muted: #576f76; --c-line: #e5ebee; --c-hover: #f6f8f9; --c-link: #0a449b; --c-pill: #e5ebee; --c-pill-h: #d2dadd; }
 .p-youtube { --c-bg: #fff; --c-fg: #0f0f0f; --c-muted: #606060; --c-line: #e5e5e5; --c-hover: #f2f2f2; --c-link: #065fd4; font-family: Roboto, "Segoe UI", system-ui, sans-serif; }
 .p-tiktok { --c-bg: #000; --c-fg: #fff; --c-muted: rgb(255 255 255 / .75); --c-line: #222; --c-hover: #161616; --c-link: #fff; }
@@ -28,6 +29,7 @@
   :root:not([data-theme="light"]) .p-bluesky { --c-bg: #161e27; --c-fg: #f1f3f5; --c-muted: #8b98a5; --c-line: #2e4052; --c-hover: #1e2936; }
   :root:not([data-theme="light"]) .p-threads { --c-bg: #101010; --c-fg: #f3f5f7; --c-muted: #777; --c-line: #323232; --c-hover: #181818; }
   :root:not([data-theme="light"]) .p-instagram { --c-bg: #000; --c-fg: #f5f5f5; --c-muted: #a8a8a8; --c-line: #262626; --c-hover: #121212; --c-link: #e0f1ff; }
+  :root:not([data-theme="light"]) .p-facebook { --c-bg: #242526; --c-fg: #e2e5e9; --c-muted: #b0b3b8; --c-line: #3e4042; --c-hover: #3a3b3c; --c-link: #5aa7ff; }
   :root:not([data-theme="light"]) .p-reddit { --c-bg: #0e1113; --c-fg: #f2f4f5; --c-muted: #8ba2ad; --c-line: #2a3236; --c-hover: #181c1f; --c-link: #7ab4ff; --c-pill: #2a3236; --c-pill-h: #333d42; }
   :root:not([data-theme="light"]) .p-youtube { --c-bg: #0f0f0f; --c-fg: #f1f1f1; --c-muted: #aaa; --c-line: #272727; --c-hover: #1f1f1f; --c-link: #3ea6ff; }
 }
@@ -131,6 +133,17 @@
 .ig-cap b { font-weight: 600; }
 .ig-more { padding: 2px 12px 4px; }
 .ig-foot { padding: 6px 12px 12px; }
+
+/* ---------- Facebook ---------- */
+.fb-head { display: flex; gap: 8px; align-items: center; padding: 12px 16px 8px; }
+.fb-head > div { display: flex; flex-direction: column; min-width: 0; }
+.fb-head b { font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fb-head .mute { font-size: 13px; }
+.fb-text { padding: 0 16px 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.fb-media .mgrid { border-radius: 0; }
+.p-facebook .linkcard { margin: 0 16px 10px; }
+.fb-stats { display: flex; gap: 12px; align-items: center; padding: 8px 16px; color: var(--c-muted); font-size: 14px; }
+.fb-stats .act svg { width: 16px; height: 16px; }
 
 /* Carousel (Instagram, galleries) */
 .car { position: relative; background: #000; overflow: hidden; }

@@ -66,6 +66,7 @@ const TARGETS = {
   reddit: { url: 'https://www.reddit.com/', hours: 2 },
   youtube: { url: 'https://www.youtube.com/', hours: 3 },
   x: { url: 'https://x.com/home', hours: 3 },
+  facebook: { url: 'https://www.facebook.com/', hours: 4 },
   instagram: { url: 'https://www.instagram.com/', hours: 4 },
   tiktok: { url: 'https://www.tiktok.com/foryou', hours: 4 },
 };

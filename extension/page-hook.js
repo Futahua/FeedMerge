@@ -9,6 +9,7 @@
     h === 'x.com' || h === 'twitter.com' ? 'x' :
     h === 'www.youtube.com' ? 'youtube' :
     h === 'www.tiktok.com' ? 'tiktok' :
+    h === 'www.facebook.com' || h === 'web.facebook.com' ? 'facebook' :
     h === 'www.instagram.com' ? 'instagram' :
     /^www\.threads\.(com|net)$/.test(h) ? 'threads' :
     h === 'bsky.app' ? 'bluesky' : null;
@@ -20,6 +21,7 @@
     tiktok: /\/api\/(recommend\/item_list|following\/item_list|post\/item_list|search\/(general|item)\/full|explore\/item_list|related\/item_list)\b/,
     instagram: /\/(graphql\/query|api\/graphql|api\/v1\/feed\/|api\/v1\/clips\/|api\/v1\/discover\/)/,
     threads: /\/(graphql\/query|api\/graphql)/,
+    facebook: /^\/api\/graphql\/?$/,
     bluesky: /\/xrpc\/app\.bsky\.feed\.(getTimeline|getFeed|getListFeed|getAuthorFeed|getPostThread|searchPosts)\b/,
   }[platform];
   const wanted = u => { try { return WANT.test(new URL(u, location.href).pathname); } catch { return false; } };
@@ -66,6 +68,13 @@
         for (const el of document.querySelectorAll('script[type="application/json"]')) {
           const t = el.textContent || '';
           if (t.includes('"taken_at"')) send(at, t);
+        }
+      }
+      // Facebook's first feed page is prefetched into the HTML as Relay data.
+      if (platform === 'facebook') {
+        for (const el of document.querySelectorAll('script[type="application/json"]')) {
+          const t = el.textContent || '';
+          if (t.includes('"__typename":"Story"') && t.includes('"post_id"')) send(at, t);
         }
       }
     } catch {}
