@@ -14,6 +14,43 @@ function fixture() {
     insert into item_labels values('a',1,.5,'ai',0,1),('b',2,1,'user',1,1);`);
   initSources(db);return { db, owner: createManagement(db) };
 }
+
+test('taxonomy editing and new story split preview/apply/revert preserve original identities',()=>{
+  const {db,owner}=fixture();try{
+    const edit=owner.preview('edit_label',{action:'update',id:1,name:'Renamed',keywords:['history']});
+    assert.equal(db.prepare('select name from labels where id=1').get().name,'One');
+    const edited=owner.apply(edit.preview_id);assert.equal(db.prepare('select keywords from labels where id=1').get().keywords,'["history"]');
+    owner.undo(edited.receipt_id,true);assert.equal(db.prepare('select name from labels where id=1').get().name,'One');
+    const split=owner.preview('story_edit',{action:'split',source_id:1,name:'Specific event',post_ids:['a']});
+    const receipt=owner.apply(split.preview_id),newId=split.input.id;
+    assert.equal(db.prepare('select count(*) n from item_labels where label_id=1').get().n,0);
+    assert.equal(db.prepare('select decided from item_labels where label_id=?').get(newId).decided,1);
+    assert.equal(db.prepare('select count(*) n from items').get().n,2);
+    owner.undo(receipt.receipt_id,true);assert.equal(db.prepare('select count(*) n from labels where id=?').get(newId).n,0);
+    assert.equal(db.prepare("select prob from item_labels where item_id='a' and label_id=1").get().prob,.5);
+  }finally{db.close();}
+});
+test('collections are identity references, idempotent, reversible and protect later edits',()=>{
+  const {db,owner}=fixture();try{
+    const plan=owner.preview('collection_edit',{action:'create',name:'Reading'});const created=owner.apply(plan.preview_id);
+    const id=plan.input.id;assert.equal(owner.collections()[0].name,'Reading');
+    const addition=owner.apply(owner.preview('collection_edit',{action:'add',id,post_ids:['a','a','b']}).preview_id);
+    assert.deepEqual(owner.collections()[0].post_ids,['a','b']);
+    assert.throws(()=>owner.undo(created.receipt_id,true),/changed after/);
+    owner.undo(addition.receipt_id,true);owner.undo(created.receipt_id,true);assert.equal(owner.collections().length,0);
+    assert.equal(db.prepare('select count(*) n from items').get().n,2);
+  }finally{db.close();}
+});
+test('story edits refuse stale membership changes and taxonomy ID reuse',()=>{
+  const {db,owner}=fixture();try{
+    const p=owner.preview('story_edit',{action:'create',name:'New',post_ids:['a']});
+    db.prepare("insert into labels values(?,'story','Concurrent',null,null,'user',2)").run(p.input.id);
+    assert.throws(()=>owner.apply(p.preview_id),/identity changed/);
+    const split=owner.preview('story_edit',{action:'split',source_id:1,name:'Split',post_ids:['a']});
+    db.prepare("update item_labels set decided=-1 where item_id='a' and label_id=1").run();
+    assert.throws(()=>owner.apply(split.preview_id),/not in the source/);
+  }finally{db.close();}
+});
 test('preview uses real mutation but rolls back; apply is idempotent and undo targets one receipt', () => {
   const { db, owner } = fixture();
   try {

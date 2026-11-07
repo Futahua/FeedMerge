@@ -3,7 +3,7 @@ import { transaction } from './sqlite-transaction.mjs';
 
 const fail = message => Object.assign(new Error(message), { status: 409 });
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
-const operations = new Set(['update_post_labels', 'mark_posts_reviewed', 'merge_stories', 'reclassify_posts', 'save_posts', 'source_control']);
+const operations = new Set(['update_post_labels', 'mark_posts_reviewed', 'merge_stories', 'reclassify_posts', 'save_posts', 'source_control','edit_label','story_edit','collection_edit']);
 function ids(input, field, numeric = false) {
   const values = input[field];
   if (!Array.isArray(values) || !values.length || values.length > 100) throw fail(`${field} requires 1–100 explicit IDs.`);
@@ -16,10 +16,46 @@ export function createManagement(db) {
     create table if not exists agent_receipts(id text primary key, preview_id text unique, operation text, input text, before_json text, after_json text, created integer, undone integer);
     create table if not exists post_reviews(item_id text primary key, reviewed_at integer, actor text);
     create table if not exists story_aliases(from_id integer primary key, to_id integer);
-    create table if not exists agent_jobs(id text primary key, kind text, input text, created integer);`);
+    create table if not exists agent_jobs(id text primary key, kind text, input text, created integer);
+    create table if not exists collections(id text primary key,name text,description text,created integer);
+    create table if not exists collection_items(collection_id text,item_id text,primary key(collection_id,item_id));`);
 
   function normalize(operation, input) {
     if (!operations.has(operation)) throw fail('Unsupported management operation.');
+    if(operation==='collection_edit'){
+      if(!['create','rename','add','remove','delete'].includes(input.action))throw fail('Unknown collection action.');
+      const id=input.id||randomUUID(),existing=db.prepare('select * from collections where id=?').get(id);
+      if(input.action==='create'?existing:!existing)throw fail('Collection identity changed or missing.');
+      const post_ids=['add','remove'].includes(input.action)?ids(input,'post_ids'):[];
+      for(const post of post_ids)if(!db.prepare('select id from items where id=?').get(post))throw fail('Post not found.');
+      if(['create','rename'].includes(input.action)&&(typeof input.name!=='string'||!input.name.trim()||input.name.length>120))throw fail('Collection name requires 1–120 characters.');
+      return {action:input.action,id,post_ids,name:input.name?.trim(),description:typeof input.description==='string'?input.description.slice(0,1000):''};
+    }
+    if(operation==='edit_label'||operation==='story_edit'){
+      const creating=operation==='story_edit'||input.action==='create';
+      if(operation==='edit_label'&&!['create','update'].includes(input.action))throw fail('Choose create or update.');
+      const id=input.id??(db.prepare('select coalesce(max(id),0)+1 id from labels').get().id),existing=db.prepare('select * from labels where id=?').get(id);
+      if(!Number.isSafeInteger(id)||id<1||(creating?existing:!existing))throw fail('Label identity changed or missing.');
+      const layer=operation==='story_edit'?'story':creating?input.layer:existing.layer;
+      if(!['topic','story','place','entity','format'].includes(layer))throw fail('Unknown taxonomy layer.');
+      if(typeof input.name!=='string'||!input.name.trim()||input.name.length>80)throw fail('Name requires 1–80 characters.');
+      const name=input.name.trim();if(db.prepare('select id from labels where layer=? and name=? and id!=?').get(layer,name,id))throw fail('Name already exists in this layer.');
+      if(input.keywords!==undefined&&(!Array.isArray(input.keywords)||input.keywords.length>30||input.keywords.some(x=>typeof x!=='string'||!x.trim()||x.length>60)))throw fail('Invalid keywords.');
+      let oldKeywords=[];try{oldKeywords=JSON.parse(existing?.keywords||'[]');}catch{}
+      const normalized={id,creating,action:creating?'create':'update',layer,name,description:input.description===undefined?(existing?.description||''):String(input.description).slice(0,300),keywords:input.keywords===undefined?oldKeywords:input.keywords};
+      if(operation==='story_edit'){
+        if(!['create','split'].includes(input.action))throw fail('Choose create or split.');
+        normalized.action=input.action;normalized.post_ids=ids(input,'post_ids');
+        for(const post of normalized.post_ids)if(!db.prepare('select id from items where id=?').get(post))throw fail('Post not found.');
+        if(input.action==='split'){
+          const source=db.prepare("select id from labels where id=? and layer='story'").get(input.source_id);
+          if(!source||db.prepare('select from_id from story_aliases where from_id=?').get(source.id))throw fail('Choose a canonical source story.');
+          for(const post of normalized.post_ids)if(!db.prepare('select item_id from item_labels where item_id=? and label_id=? and decided>=0').get(post,source.id))throw fail('Selected post is not in the source story.');
+          normalized.source_id=source.id;
+        }
+      }
+      return normalized;
+    }
     if(operation==='source_control'){
       if(!['add','pause','resume','remove','refresh'].includes(input.action))throw fail('Unknown source action.');
       if(input.action==='add'){
@@ -57,6 +93,11 @@ export function createManagement(db) {
   // Capture only the rows/columns this operation owns. Restore never replaces whole tables.
   function snapshot(operation, input) {
     const out = {};
+    if(operation==='collection_edit')return {collections:db.prepare('select * from collections where id=?').all(input.id),collection_items:db.prepare('select * from collection_items where collection_id=? order by item_id').all(input.id)};
+    if(operation==='edit_label'||operation==='story_edit'){
+      const keys=[input.id,...input.source_id?[input.source_id]:[]];
+      return {labels:keys.flatMap(id=>db.prepare('select * from labels where id=?').all(id)),item_labels:keys.flatMap(id=>db.prepare('select * from item_labels where label_id=? order by item_id').all(id)),story_aliases:keys.flatMap(id=>db.prepare('select * from story_aliases where from_id=? or to_id=? order by from_id').all(id,id))};
+    }
     if(operation==='source_control')return {sources:db.prepare('select * from sources where id=?').all(input.id)};
     if (operation === 'merge_stories') {
       out.labels = input.label_ids.map(id => db.prepare('select * from labels where id = ?').get(id));
@@ -74,7 +115,19 @@ export function createManagement(db) {
   }
 
   function mutate(operation, input, stamp) {
-    if(operation==='source_control'){
+    if(operation==='collection_edit'){
+      if(input.action==='create')db.prepare('insert into collections values (?,?,?,?)').run(input.id,input.name,input.description,stamp);
+      if(input.action==='rename')db.prepare('update collections set name=? where id=?').run(input.name,input.id);
+      if(input.action==='delete'){db.prepare('delete from collection_items where collection_id=?').run(input.id);db.prepare('delete from collections where id=?').run(input.id);}
+      for(const post of input.post_ids){if(input.action==='add')db.prepare('insert or ignore into collection_items values (?,?)').run(input.id,post);if(input.action==='remove')db.prepare('delete from collection_items where collection_id=? and item_id=?').run(input.id,post);}
+    }else if(operation==='edit_label'||operation==='story_edit'){
+      if(input.creating)db.prepare("insert into labels(id,layer,name,description,keywords,source,created) values (?,?,?,?,?,'user',?)").run(input.id,input.layer,input.name,input.description,JSON.stringify(input.keywords),stamp);
+      else db.prepare("update labels set name=?,description=?,keywords=?,source='user' where id=?").run(input.name,input.description,JSON.stringify(input.keywords),input.id);
+      if(operation==='story_edit')for(const post of input.post_ids){
+        if(input.source_id)db.prepare('delete from item_labels where item_id=? and label_id=?').run(post,input.source_id);
+        db.prepare("insert into item_labels values (?,?,1,'user',1,?)").run(post,input.id,stamp);
+      }
+    }else if(operation==='source_control'){
       if(input.action==='add')db.prepare('insert into sources(id,kind,name,url,interval_min,created) values (?,?,?,?,?,?)').run(input.id,input.resolved.kind,input.resolved.name,input.resolved.url,input.interval,stamp);
       else if(input.action==='remove')db.prepare('delete from sources where id=?').run(input.id);
       else if(input.action==='refresh')db.prepare('update sources set last_fetch=null,last_hash=null where id=?').run(input.id);
@@ -114,7 +167,16 @@ export function createManagement(db) {
   }
 
   function restore(operation, input, before) {
-    if(operation==='source_control'){
+    if(operation==='collection_edit'){
+      db.prepare('delete from collection_items where collection_id=?').run(input.id);db.prepare('delete from collections where id=?').run(input.id);
+      for(const row of before.collections)db.prepare('insert into collections values (?,?,?,?)').run(row.id,row.name,row.description,row.created);
+      for(const row of before.collection_items)db.prepare('insert into collection_items values (?,?)').run(row.collection_id,row.item_id);
+    }else if(operation==='edit_label'||operation==='story_edit'){
+      for(const id of [input.id,...input.source_id?[input.source_id]:[]])db.prepare('delete from item_labels where label_id=?').run(id);
+      if(input.creating)db.prepare('delete from labels where id=?').run(input.id);
+      for(const row of before.labels)db.prepare('update labels set name=?,description=?,keywords=?,source=?,created=? where id=?').run(row.name,row.description,row.keywords,row.source,row.created,row.id);
+      for(const row of before.item_labels)db.prepare('insert into item_labels values (?,?,?,?,?,?)').run(row.item_id,row.label_id,row.prob,row.source,row.decided,row.updated);
+    }else if(operation==='source_control'){
       db.prepare('delete from sources where id=?').run(input.id);
       for(const row of before.sources){const keys=Object.keys(row);db.prepare(`insert into sources(${keys.join(',')}) values(${keys.map(()=>'?').join(',')})`).run(...keys.map(key=>row[key]));}
     } else if (operation === 'merge_stories' || operation === 'update_post_labels') {
@@ -199,5 +261,6 @@ export function createManagement(db) {
       return { id: job.id, kind: job.kind, created: job.created, requested: input.post_ids.length, pending, provider, status: pending ? 'queued_or_processing' : 'processed_by_configured_classifier' };
     });
   }
-  return { preview, apply, undo, history, jobs };
+  function collections(){return db.prepare('select * from collections order by name,id').all().map(item=>({...item,post_ids:db.prepare('select item_id from collection_items where collection_id=? order by item_id').all(item.id).map(row=>row.item_id)}));}
+  return { preview, apply, undo, history, jobs, collections };
 }

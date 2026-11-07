@@ -278,6 +278,7 @@ const server = http.createServer(async (req, res) => {
       captures: db.prepare('select platform,count(*) captures,max(captured_at) last_capture from raw group by platform').all(),
     });
     if (req.method === 'GET' && u.pathname === '/api/agent/history') return send(res, 200, management.history());
+    if (req.method === 'GET' && u.pathname === '/api/collections') return send(res, 200, management.collections());
     const agentAction = /^\/api\/agent\/(preview|apply|undo)$/.exec(u.pathname);
     if (req.method === 'POST' && agentAction) {
       if (readConfig().agent?.writes === false) return send(res, 403, { error: 'Agent writes are disabled by the local owner.' });

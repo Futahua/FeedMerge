@@ -63,3 +63,6 @@ Batches of 25 posts, one call per 20 s by default. The AI only adds labels; the 
 - It only sees what your Chrome sessions load. The TikTok and Instagram phone apps aren't captured.
 - Facebook and LinkedIn aren't supported.
 - Capturing your own signed-in feeds may break a platform's terms. It only stores what you were shown, on your own computer.
+
+
+The connector exposes 22 actions. `edit_taxonomy_label`, `create_story`, and `split_story` use the same preview/apply/targeted-undo owner. Splits move explicit memberships into a new stable story ID and retain original captures. Taxonomy edits preserve existing post decisions and do not implicitly queue reclassification. `list_collections` and `manage_collection` maintain named collections of original post IDs in the existing SQLite store; removing a collection never removes posts. Later changes invalidate scoped undo.

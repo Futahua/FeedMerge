@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // FeedMerge MCP server (stdio). Lets an AI assistant you already use (Claude, ChatGPT) read your
-// merged feed and *suggest* categories, topics and story names. It talks only to the local
-// FeedMerge API; it cannot delete anything, run commands or reach anything else.
+// merged feed and manage categories, stories and collections. It talks only to the local
+// FeedMerge API; it cannot delete original captures or run machine commands.
 // Post labels are pending suggestions. Taxonomy edits preview first and require apply=true.
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -174,5 +174,11 @@ server.registerTool('undo_feed_change', { description: 'Preview reversal of ONE 
   inputSchema: { receipt_id: z.string().uuid(), apply: z.boolean().default(false) } }, async input => out(await api('/api/agent/undo', input)));
 server.registerTool('manage_source',{description:'Preview adding, pausing, resuming, removing or refreshing ONE source through its existing poll owner. Add resolution fetches the public source using checked DNS/redirect policy. Apply with preview_id. Removing keeps captured posts; undo changes source configuration only, not posts already fetched.',
   inputSchema:{action:z.enum(['add','pause','resume','remove','refresh']),id:z.number().int().positive().optional(),input:z.string().max(2048).optional(),interval:z.number().int().min(10).max(10080).optional(),preview_id:previewId}},async({preview_id,...input})=>managed('source_control',input,preview_id));
+
+server.registerTool('edit_taxonomy_label',{description:'Preview creating or updating a label definition and matching keywords through the taxonomy owner. Existing post decisions are preserved. Apply with preview_id; receipt undo refuses later changes. Does not automatically reclassify posts.',inputSchema:{action:z.enum(['create','update']),id:z.number().int().positive().optional(),layer:z.enum(['topic','story','place','entity','format']).optional(),name:z.string().min(1).max(80),description:z.string().max(300).optional(),keywords:z.array(z.string().min(1).max(60)).max(30).optional(),preview_id:previewId}},async({preview_id,...input})=>managed('edit_label',input,preview_id));
+server.registerTool('create_story',{description:'Preview a named story containing explicit posts, with confirmed memberships. Preserves original captures and other memberships. Apply with preview_id; scoped undo refuses intervening edits.',inputSchema:{name:z.string().min(1).max(80),post_ids:posts,preview_id:previewId}},async({preview_id,...input})=>managed('story_edit',{...input,action:'create'},preview_id));
+server.registerTool('split_story',{description:'Preview moving explicit posts from a canonical story into a new named story. Other source members stay; rejected memberships cannot be moved. Apply with preview_id and reverse by receipt.',inputSchema:{source_id:z.number().int().positive(),name:z.string().min(1).max(80),post_ids:posts,preview_id:previewId}},async({preview_id,...input})=>managed('story_edit',{...input,action:'split'},preview_id));
+server.registerTool('list_collections',{description:'Read durable named collections with original post IDs. No copies of captures are made.',inputSchema:{},annotations:{readOnlyHint:true}},async()=>out(await api('/api/collections')));
+server.registerTool('manage_collection',{description:'Preview create/rename/add/remove/delete for a named collection. Deleting a collection never deletes its posts. Apply with preview_id; targeted receipt undo refuses later changes.',inputSchema:{action:z.enum(['create','rename','add','remove','delete']),id:z.string().uuid().optional(),name:z.string().min(1).max(120).optional(),description:z.string().max(1000).optional(),post_ids:posts.optional(),preview_id:previewId}},async({preview_id,...input})=>managed('collection_edit',input,preview_id));
 
 await server.connect(new StdioServerTransport());
