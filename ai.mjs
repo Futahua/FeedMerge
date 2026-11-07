@@ -1,3 +1,5 @@
+import { setMachineLabels } from './categorize.mjs';
+
 // Optional topic + story labelling through any OpenAI-compatible chat API (Gemini, Groq,
 // OpenRouter, ...). Runs in the background; capture and viewing never wait for it.
 const SYSTEM = `You label social media posts for a personal merged feed.
@@ -19,8 +21,8 @@ export function startTagger(db, readConfig, log) {
     const rows = db.prepare('select id, platform, author, title, text from items where ai_done = 0 order by first_seen desc limit ?').all(Number(cfg.batchSize) || 25);
     if (!rows.length) return later(Math.max(every, 30_000));
     try {
-      const topics = db.prepare('select value t, count(*) n from items, json_each(items.ai_topics) group by value order by n desc limit 80').all().map(r => r.t);
-      const stories = db.prepare('select ai_story s, count(*) n from items where ai_story is not null and first_seen > ? group by ai_story order by n desc limit 60').all(Date.now() - 4 * 864e5).map(r => r.s);
+      const topics = db.prepare(`select l.name t from labels l where l.layer = 'topic' order by (select count(*) from item_labels where label_id = l.id) desc limit 80`).all().map(r => r.t);
+      const stories = db.prepare(`select l.name s from labels l where l.layer = 'story' and l.created > ? limit 60`).all(Date.now() - 4 * 864e5).map(r => r.s);
       const payload = {
         existingTopics: topics,
         recentStories: stories,
@@ -37,12 +39,15 @@ export function startTagger(db, readConfig, log) {
       const content = String(body.choices?.[0]?.message?.content || '');
       const json = JSON.parse(content.slice(content.indexOf('{'), content.lastIndexOf('}') + 1));
       const byId = new Map((json.items || []).map(x => [x.id, x]));
-      const upd = db.prepare('update items set ai_topics = ?, ai_story = ?, ai_done = 1 where id = ?');
+      const upd = db.prepare('update items set ai_done = 1 where id = ?');
       db.exec('begin');
       for (const r of rows) {
         const x = byId.get(r.id);
         const t = Array.isArray(x?.topics) ? x.topics.filter(v => typeof v === 'string').slice(0, 3) : [];
-        upd.run(JSON.stringify(t), typeof x?.story === 'string' && x.story.trim() ? x.story.trim() : null, r.id);
+        setMachineLabels(db, r.id, 'topic', t.map(name => ({ name, prob: 0.8 })), 'ai');
+        const story = typeof x?.story === 'string' && x.story.trim() ? x.story.trim() : null;
+        if (story) setMachineLabels(db, r.id, 'story', [{ name: story, prob: 0.8 }], 'ai');
+        upd.run(r.id);
       }
       db.exec('commit');
       backoff = 0;

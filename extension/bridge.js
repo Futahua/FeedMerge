@@ -33,7 +33,12 @@ if (location.hostname.endsWith('reddit.com')) {
       if (!id || sent.has(id)) continue;
       sent.add(id);
       const img = el.querySelector('img[src*="preview.redd.it"], img[src*="i.redd.it"], img[src*="external-preview.redd.it"]');
+      const gallery = [...el.querySelectorAll('gallery-carousel img, [slot="post-media-container"] img')]
+        .map(i => i.currentSrc || i.src || i.getAttribute('data-lazy-src') || '').filter(s => /redd\.it\//.test(s));
       out.push({
+        postType: attr(el, 'post-type'),
+        images: [...new Set(gallery)].slice(0, 10),
+        icon: el.querySelector('img[src*="styles.redditmedia.com"], img[src*="communityIcon"], img[src*="community_icon"]')?.src,
         id, title: attr(el, 'post-title'), permalink: attr(el, 'permalink'), author: attr(el, 'author'),
         subreddit: attr(el, 'subreddit-prefixed-name'), score: attr(el, 'score'), comments: attr(el, 'comment-count'),
         created: attr(el, 'created-timestamp'), href: attr(el, 'content-href'),

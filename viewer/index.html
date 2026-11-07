@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FeedMerge</title>
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="native.css">
 </head>
 <body>
 <header>
@@ -16,11 +17,13 @@
     <option value="published">Newest posted</option>
     <option value="repeated">Pushed to you most often</option>
   </select>
+  <button id="catsBtn" class="btn">Categories</button>
   <button id="sourcesBtn" class="btn">Sources</button>
   <button id="menu" class="icon" aria-label="Filters">☰</button>
 </header>
+
 <dialog id="sourcesDlg">
-  <div class="dlg-head"><h3>Web sources</h3><button class="icon2" id="closeSources" aria-label="Close">✕</button></div>
+  <div class="dlg-head"><h3>Web sources</h3><button class="icon2" data-close aria-label="Close">✕</button></div>
   <p class="hint">Paste a site address, a feed link, a topic to search the news for, or an RSSHub route (starts with <code>/</code>). Sites without a feed are watched for new headlines.</p>
   <form id="addSource">
     <input id="srcInput" placeholder="e.g. theverge.com · RTX 5090 · vnexpress.net · /telegram/channel/durov" autocomplete="off" required>
@@ -34,13 +37,26 @@
   <div id="srcMsg" class="hint"></div>
   <div id="srcList"></div>
 </dialog>
+
+<dialog id="catsDlg">
+  <div class="dlg-head"><h3>Categories</h3><button class="icon2" data-close aria-label="Close">✕</button></div>
+  <p class="hint">Each layer sorts posts a different way. Labels marked <span class="src-tag">mock</span> come from simple keyword rules until an AI provider is set up; your confirmations and rejections always win. Keywords: one per comma, <code>=Word</code> matches exact case.</p>
+  <div id="catTabs" class="tabs"></div>
+  <form id="addLabel" class="row">
+    <input id="newLabelName" placeholder="New label name" required>
+    <input id="newLabelKw" placeholder="Keywords (optional), comma separated">
+    <button class="btn primary">Add</button>
+  </form>
+  <div id="catList"></div>
+</dialog>
+
 <div class="layout">
   <aside id="side">
     <section><h2>Platforms</h2><div id="platforms" class="chips"></div></section>
     <section><h2>Where it came from</h2><div id="contexts" class="list"></div></section>
-    <section id="storiesBox"><h2>Stories across platforms</h2><div id="stories" class="list"></div></section>
-    <section id="topicsBox"><h2>Topics</h2><div id="topics" class="chips"></div></section>
+    <div id="layerBoxes"></div>
     <section>
+      <label class="check"><input type="checkbox" id="review"> <span>Needs review <span id="reviewN" class="n"></span></span></label>
       <label class="check"><input type="checkbox" id="saved"> Saved only</label>
       <label class="check"><input type="checkbox" id="ads"> Show ads</label>
     </section>
@@ -53,6 +69,7 @@
     <div id="more" class="more"></div>
   </main>
 </div>
+<script src="native.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

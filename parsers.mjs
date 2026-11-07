@@ -123,15 +123,24 @@ const X_OPS = { HomeTimeline: 'for-you', HomeLatestTimeline: 'following', TweetD
 
 function xUser(r) {
   const u = r?.core?.user_results?.result;
-  return { screen: u?.core?.screen_name || u?.legacy?.screen_name, name: u?.core?.name || u?.legacy?.name };
+  const avatar = (u?.avatar?.image_url || u?.legacy?.profile_image_url_https || '').replace('_normal.', '_bigger.');
+  return { screen: u?.core?.screen_name || u?.legacy?.screen_name, name: u?.core?.name || u?.legacy?.name, avatar, verified: !!(u?.is_blue_verified || u?.legacy?.verified) };
+}
+
+function xMedia(m) {
+  const w = m.original_info?.width, h = m.original_info?.height;
+  if (m.type === 'photo') return { type: 'image', url: m.media_url_https, w, h };
+  const mp4 = (m.video_info?.variants || []).filter(v => v.content_type === 'video/mp4').sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
+  const pick = mp4.find(v => (v.bitrate || 0) <= 2_500_000) || mp4.at(-1);
+  return { type: m.type === 'animated_gif' ? 'gif' : 'video', url: m.media_url_https, video: pick?.url, w, h, duration: m.video_info?.duration_millis };
 }
 
 function xTweet(r) {
   if (r?.__typename === 'TweetWithVisibilityResults') r = r.tweet;
   if (!r?.legacy || !r.rest_id) return null;
   const L = r.legacy;
-  const { screen, name } = xUser(r);
-  const media = (L.extended_entities?.media || L.entities?.media || []).map(m => ({ type: m.type === 'photo' ? 'image' : 'video', url: m.media_url_https }));
+  const { screen, name, avatar, verified } = xUser(r);
+  const media = (L.extended_entities?.media || L.entities?.media || []).map(xMedia);
   return {
     nativeId: r.rest_id,
     author: screen,
@@ -141,7 +150,7 @@ function xTweet(r) {
     media,
     publishedAt: Date.parse(L.created_at) || null,
     metrics: clean({ likes: L.favorite_count, reposts: L.retweet_count, replies: L.reply_count, quotes: L.quote_count, views: num(r.views?.count) }),
-    flags: {},
+    flags: clean({ avatar, verified: verified || undefined }),
   };
 }
 
@@ -161,7 +170,7 @@ function parseX(doc, cap, now, out) {
       if (inner) { inner.flags.repostedBy = outer.author; item = inner; }
     }
     const q = xTweet((n.tweet || n).quoted_status_result?.result);
-    if (q) item.flags.quote = { author: q.author, text: q.text.slice(0, 500), url: q.url };
+    if (q) item.flags.quote = { author: q.author, name: q.authorName, avatar: q.flags.avatar, text: q.text.slice(0, 500), url: q.url, media: q.media.slice(0, 1) };
     if (promoted.has(outer.nativeId)) item.flags.ad = true;
     item.context = context;
     out.push(item);
@@ -174,6 +183,12 @@ function ytThumb(n) {
   let best = null;
   walk(n, x => { if (Array.isArray(x.thumbnails) && x.thumbnails.length) { best = x.thumbnails.at(-1).url; return 'skip'; } if (Array.isArray(x.sources) && x.sources[0]?.url) { best = x.sources.at(-1).url; return 'skip'; } });
   return best;
+}
+
+function ytBadge(n) {
+  let t;
+  walk(n, x => { const s = x.thumbnailBadgeViewModel?.text; if (typeof s === 'string' && /^\d+(:\d+)+$/.test(s)) { t = s; return 'skip'; } });
+  return t;
 }
 
 function parseYouTube(doc, cap, now, out) {
@@ -191,7 +206,7 @@ function parseYouTube(doc, cap, now, out) {
         media: [{ type: 'video', url: ytThumb(v.thumbnail) }].filter(m => m.url),
         publishedAt: relativeTime(ago, now),
         metrics: clean({ views: count(txt(v.viewCountText)), duration: txt(v.lengthText) || undefined, ago: ago || undefined }),
-        flags: {},
+        flags: clean({ avatar: v.channelThumbnailSupportedRenderers?.channelThumbnailWithLinkRenderer?.thumbnail?.thumbnails?.[0]?.url }),
       });
       return 'skip';
     }
@@ -211,8 +226,8 @@ function parseYouTube(doc, cap, now, out) {
         url: `https://www.youtube.com/watch?v=${lk.contentId}`,
         media: [{ type: 'video', url: ytThumb(lk.contentImage) }].filter(m => m.url),
         publishedAt: relativeTime(ago, now),
-        metrics: clean({ views: viewsPart ? count(viewsPart.text) : undefined, ago: agoPart?.text || undefined }),
-        flags: {},
+        metrics: clean({ views: viewsPart ? count(viewsPart.text) : undefined, ago: agoPart?.text || undefined, duration: ytBadge(lk.contentImage) }),
+        flags: clean({ avatar: meta?.image?.decoratedAvatarViewModel?.avatar?.avatarViewModel?.image?.sources?.[0]?.url }),
       });
       return 'skip';
     }
@@ -252,10 +267,12 @@ function parseTikTok(doc, cap, now, out) {
       authorName: n.author.nickname,
       text: n.desc,
       url: `https://www.tiktok.com/@${n.author.uniqueId}/video/${n.id}`,
-      media: [{ type: n.imagePost ? 'image' : 'video', url: n.video?.cover || n.video?.originCover || n.imagePost?.cover?.imageURL?.urlList?.[0] }].filter(m => m.url),
+      media: n.imagePost?.images?.length
+        ? n.imagePost.images.slice(0, 10).map(i => ({ type: 'image', url: i.imageURL?.urlList?.[0], w: i.imageWidth, h: i.imageHeight })).filter(m => m.url)
+        : [{ type: 'video', url: n.video?.cover || n.video?.originCover, w: n.video?.width, h: n.video?.height, duration: n.video?.duration ? n.video.duration * 1000 : undefined }].filter(m => m.url),
       publishedAt: Number(n.createTime) * 1000,
-      metrics: clean({ views: num(s.playCount), likes: num(s.diggCount), comments: num(s.commentCount), shares: num(s.shareCount) }),
-      flags: n.isAd ? { ad: true } : {},
+      metrics: clean({ views: num(s.playCount), likes: num(s.diggCount), comments: num(s.commentCount), shares: num(s.shareCount), saves: num(s.collectCount) }),
+      flags: clean({ ad: n.isAd || undefined, avatar: n.author.avatarThumb || n.author.avatarMedium, music: n.music?.title ? `${n.music.title}${n.music.authorName ? ' · ' + n.music.authorName : ''}` : undefined }),
       context,
     });
     return 'skip';
@@ -273,18 +290,28 @@ function metaPosts(doc, out, makeUrl) {
   });
   walk(doc, n => {
     if (typeof n.code !== 'string' || typeof n.taken_at !== 'number' || !n.user?.username) return;
-    const first = n.carousel_media?.[0] || n;
-    const img = first.image_versions2?.candidates?.[0]?.url;
+    const parts = (n.carousel_media?.length ? n.carousel_media : [n]).slice(0, 10);
+    const media = parts.map(p => {
+      const img = p.image_versions2?.candidates?.[0]?.url;
+      const vid = p.video_versions?.[0]?.url;
+      return img ? clean({ type: vid ? 'video' : 'image', url: img, video: vid, w: p.original_width, h: p.original_height, duration: p.video_duration ? Math.round(p.video_duration * 1000) : undefined }) : null;
+    }).filter(Boolean);
     out.push({
       nativeId: n.code,
       author: n.user.username,
       authorName: n.user.full_name,
       text: n.caption?.text || '',
       url: makeUrl(n),
-      media: img ? [{ type: n.media_type === 2 || n.video_versions ? 'video' : 'image', url: img }] : [],
+      media,
       publishedAt: n.taken_at * 1000,
       metrics: clean({ likes: n.like_count, comments: n.comment_count, views: n.play_count ?? n.view_count, reposts: n.text_post_app_info?.repost_count }),
-      flags: n.ad_id || n.is_ad || adCodes.has(n.code) ? { ad: true } : {},
+      flags: clean({
+        ad: n.ad_id || n.is_ad || adCodes.has(n.code) || undefined,
+        avatar: n.user.profile_pic_url,
+        verified: n.user.is_verified || undefined,
+        reel: n.product_type === 'clips' || undefined,
+        music: n.clips_metadata?.music_info?.music_asset_info?.title || n.clips_metadata?.original_sound_info?.original_audio_title || undefined,
+      }),
     });
     return 'skip';
   });
@@ -303,7 +330,9 @@ function parseBluesky(doc, cap, now, out) {
     const rkey = n.uri.split('/').pop();
     const e = n.embed || {};
     const imgs = e.images || e.media?.images || [];
-    const media = imgs.map(i => ({ type: 'image', url: i.thumb })).concat(e.external?.thumb ? [{ type: 'link', url: e.external.thumb }] : []).concat(e.thumbnail ? [{ type: 'video', url: e.thumbnail }] : []);
+    const media = imgs.map(i => clean({ type: 'image', url: i.fullsize || i.thumb, w: i.aspectRatio?.width, h: i.aspectRatio?.height }))
+      .concat(e.external?.thumb ? [{ type: 'link', url: e.external.thumb }] : [])
+      .concat(e.thumbnail ? [clean({ type: 'video', url: e.thumbnail, w: e.aspectRatio?.width, h: e.aspectRatio?.height })] : []);
     out.push({
       nativeId: n.uri.replace('at://', ''),
       author: n.author.handle,
@@ -313,7 +342,7 @@ function parseBluesky(doc, cap, now, out) {
       media,
       publishedAt: Date.parse(n.record.createdAt || n.indexedAt) || null,
       metrics: clean({ likes: n.likeCount, reposts: n.repostCount, replies: n.replyCount, quotes: n.quoteCount }),
-      flags: e.external?.uri ? { link: e.external.uri } : {},
+      flags: clean({ link: e.external?.uri, linkTitle: e.external?.title, avatar: n.author.avatar }),
       context,
     });
     return 'skip';
@@ -331,10 +360,10 @@ function parseReddit(doc, cap, now, out) {
       title: p.title,
       text: p.body || '',
       url: p.permalink ? new URL(p.permalink, 'https://www.reddit.com').href : undefined,
-      media: p.thumb ? [{ type: 'image', url: p.thumb }] : [],
+      media: p.images?.length ? p.images.map(u => ({ type: 'image', url: u })) : p.thumb ? [{ type: p.postType === 'video' ? 'video' : 'image', url: p.thumb }] : [],
       publishedAt: Date.parse(p.created) || (Number(p.created) > 1e12 ? Number(p.created) : null),
       metrics: clean({ score: num(p.score), comments: num(p.comments) }),
-      flags: clean({ ad: p.promoted || undefined, link: p.href && !/reddit\.com/.test(p.href) ? p.href : undefined }),
+      flags: clean({ ad: p.promoted || undefined, link: p.href && !/reddit\.com|redd\.it/.test(p.href) ? p.href : undefined, postType: p.postType, avatar: p.icon }),
     });
   }
 }

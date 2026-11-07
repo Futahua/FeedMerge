@@ -5,10 +5,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gzipSync, gunzipSync } from 'node:zlib';
+import { createHash } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { parseCapture } from './parsers.mjs';
 import { startTagger } from './ai.mjs';
 import { initSources, resolveSource, startPoller } from './sources.mjs';
+import { initCategories, startCategorizer } from './categorize.mjs';
+import { initCloudflare, startCloudflare, embeddingStories, cloudflareConfig } from './cloudflare.mjs';
 
 const DIR = path.dirname(fileURLToPath(import.meta.url));
 const DATA = path.join(DIR, 'data');
@@ -47,7 +50,11 @@ create virtual table if not exists items_fts using fts5(author, title, text);
 `);
 
 initSources(db);
+initCategories(db);
+initCloudflare(db);
 let poller = null;
+let categorizer = null;
+let cf = null;
 
 const q = {
   rawIns: db.prepare('insert into raw(platform, kind, url, page_url, captured_at, body) values (?, ?, ?, ?, ?, ?)'),
@@ -96,7 +103,7 @@ function ingest(cap, keepRaw = true) {
 
 // Rebuild every item from stored raw captures, keeping AI labels and saves.
 function reparse() {
-  const keep = db.prepare('select id, ai_topics, ai_story, ai_done, saved from items').all();
+  const keep = db.prepare('select id, ai_topics, ai_story, ai_done, saved, cf_done from items').all();
   db.exec('delete from items; delete from items_fts;');
   const ids = db.prepare('select id from raw order by id').all();
   const one = db.prepare('select * from raw where id = ?');
@@ -106,9 +113,9 @@ function reparse() {
     ingest({ platform: r.platform, kind: r.kind, url: r.url, pageUrl: r.page_url, capturedAt: r.captured_at, payload: gunzipSync(r.body).toString('utf8') }, false);
     n++;
   }
-  const restore = db.prepare('update items set ai_topics = ?, ai_story = ?, ai_done = ?, saved = ? where id = ?');
+  const restore = db.prepare('update items set ai_topics = ?, ai_story = ?, ai_done = ?, saved = ?, cf_done = ? where id = ?');
   db.exec('begin');
-  for (const k of keep) restore.run(k.ai_topics, k.ai_story, k.ai_done, k.saved, k.id);
+  for (const k of keep) restore.run(k.ai_topics, k.ai_story, k.ai_done, k.saved, k.cf_done ?? 0, k.id);
   db.exec('commit');
   return { captures: n, items: db.prepare('select count(*) n from items').get().n };
 }
@@ -116,10 +123,36 @@ function reparse() {
 function rowOut(r) {
   const p = v => { try { return v ? JSON.parse(v) : null; } catch { return null; } };
   return {
-    id: r.id, platform: r.platform, context: r.context, author: r.author, authorName: r.author_name, title: r.title, text: r.text,
+    id: r.id, platform: r.platform, nativeId: r.native_id, context: r.context, author: r.author, authorName: r.author_name, title: r.title, text: r.text,
     url: r.url, media: p(r.media) || [], publishedAt: r.published_at, firstSeen: r.first_seen, lastSeen: r.last_seen,
-    seenCount: r.seen_count, metrics: p(r.metrics) || {}, flags: p(r.flags) || {}, topics: p(r.ai_topics) || [], story: r.ai_story, saved: !!r.saved,
+    seenCount: r.seen_count, metrics: p(r.metrics) || {}, flags: p(r.flags) || {}, labels: [], saved: !!r.saved,
   };
+}
+
+function attachLabels(items) {
+  if (!items.length) return items;
+  const rows = db.prepare(`select il.item_id, l.id, l.layer, l.name, il.prob, il.source, il.decided from item_labels il join labels l on l.id = il.label_id
+    where il.decided >= 0 and il.item_id in (${items.map(() => '?').join(',')}) order by il.decided desc, il.prob desc`).all(...items.map(i => i.id));
+  const by = new Map(items.map(i => [i.id, i]));
+  for (const r of rows) by.get(r.item_id)?.labels.push({ id: r.id, layer: r.layer, name: r.name, prob: r.prob, source: r.source, decided: r.decided });
+  return items;
+}
+
+function categories() {
+  const since = Date.now() - 4 * 864e5;
+  const labels = db.prepare(`select l.id, l.layer, l.name, l.description, l.keywords, l.source,
+      (select count(*) from item_labels il where il.label_id = l.id and il.decided >= 0) n,
+      (select count(distinct i.platform) from item_labels il join items i on i.id = il.item_id where il.label_id = l.id and il.decided >= 0) platforms
+    from labels l order by l.layer, n desc, l.name`).all();
+  const storyRecent = new Set(db.prepare(`select distinct il.label_id id from item_labels il join items i on i.id = il.item_id join labels l on l.id = il.label_id
+    where l.layer = 'story' and i.first_seen > ?`).all(since).map(r => r.id));
+  const layers = db.prepare('select id, name from layers order by sort').all().map(l => ({
+    ...l,
+    labels: labels.filter(x => x.layer === l.id && (l.id !== 'story' || storyRecent.has(x.id)))
+      .map(x => ({ id: x.id, name: x.name, description: x.description, keywords: x.keywords ? JSON.parse(x.keywords) : null, source: x.source, n: x.n, platforms: x.platforms })),
+  }));
+  const review = db.prepare(`select count(distinct item_id) n from item_labels where decided = 0 and source not in ('rule') and prob < 0.7`).get().n;
+  return { layers, review };
 }
 
 function ftsQuery(text) {
@@ -132,8 +165,11 @@ function listItems(p) {
   const platforms = (p.get('platform') || '').split(',').filter(Boolean);
   if (platforms.length) { where.push(`platform in (${platforms.map(() => '?').join(',')})`); args.push(...platforms); }
   if (p.get('context')) { where.push('context = ?'); args.push(p.get('context')); }
-  if (p.get('topic')) { where.push('exists (select 1 from json_each(items.ai_topics) where value = ?)'); args.push(p.get('topic')); }
-  if (p.get('story')) { where.push('ai_story = ?'); args.push(p.get('story')); }
+  for (const id of (p.get('label') || '').split(',').filter(Boolean)) {
+    where.push('exists (select 1 from item_labels il where il.item_id = items.id and il.label_id = ? and il.decided >= 0)');
+    args.push(Number(id));
+  }
+  if (p.get('review') === '1') where.push(`exists (select 1 from item_labels il where il.item_id = items.id and il.decided = 0 and il.source != 'rule' and il.prob < 0.7)`);
   if (p.get('saved') === '1') where.push('saved = 1');
   if (p.get('ads') !== '1') where.push("coalesce(json_extract(flags, '$.ad'), 0) = 0");
   if (p.get('q')) { where.push('rowid in (select rowid from items_fts where items_fts match ?)'); args.push(ftsQuery(p.get('q'))); }
@@ -142,7 +178,7 @@ function listItems(p) {
   const limit = Math.min(200, Number(p.get('limit')) || 50);
   const offset = Math.max(0, Number(p.get('offset')) || 0);
   const sql = `select * from items ${where.length ? 'where ' + where.join(' and ') : ''} order by ${order} limit ${limit} offset ${offset}`;
-  return db.prepare(sql).all(...args).map(rowOut);
+  return attachLabels(db.prepare(sql).all(...args).map(rowOut));
 }
 
 function facets() {
@@ -151,14 +187,62 @@ function facets() {
   return {
     platforms: db.prepare('select platform, count(*) n, max(first_seen) last from items group by platform order by n desc').all(),
     contexts: db.prepare('select platform, context, count(*) n from items group by platform, context order by n desc').all(),
-    topics: db.prepare('select value topic, count(*) n from items, json_each(items.ai_topics) group by value order by n desc limit 60').all(),
-    stories: db.prepare(`select ai_story story, count(*) n, count(distinct platform) platforms, group_concat(distinct platform) list, max(first_seen) last
-                         from items where ai_story is not null and first_seen > ? group by ai_story having n > 1 order by platforms desc, n desc limit 40`).all(since),
-    ai: { enabled: !!(cfg.enabled && (cfg.apiKey || process.env.FEEDMERGE_AI_KEY)), pending: db.prepare('select count(*) n from items where ai_done = 0').get().n },
+    ai: {
+      enabled: !!(cfg.enabled && (cfg.apiKey || process.env.FEEDMERGE_AI_KEY)) || !!cf?.active(),
+      provider: cf?.active() ? 'cloudflare' : cfg.enabled ? 'chat' : 'mock',
+      usage: cf?.active() ? cf.usage() : null,
+      pending: db.prepare("select count(*) n from items where cf_done = 0 and coalesce(json_extract(flags, '$.ad'), 0) = 0").get().n,
+      embedded: db.prepare('select count(*) n from embeddings').get().n,
+    },
     total: db.prepare('select count(*) n, max(first_seen) last from items').get(),
     captures: db.prepare('select count(*) n from raw').get().n,
   };
 }
+
+// ---------- Media proxy + cache ----------
+// Instagram/TikTok media links expire after days, and some (Instagram avatars) refuse to
+// display on other sites. Images you actually look at are fetched once and kept on disk.
+const MEDIA_DIR = path.join(DATA, 'media');
+fs.mkdirSync(MEDIA_DIR, { recursive: true });
+const MEDIA_HOSTS = /(^|\.)(fbcdn\.net|cdninstagram\.com|tiktokcdn\.com|tiktokcdn-us\.com|twimg\.com|ytimg\.com|ggpht\.com|redd\.it|redditmedia\.com|redditstatic\.com|bsky\.app|bsky\.social)$/;
+const MEDIA_CAP = 3e9;
+const inflight = new Map();
+
+async function mediaProxy(res, raw) {
+  let u;
+  try { u = new URL(raw); } catch { return send(res, 400, { error: 'bad url' }); }
+  if (u.protocol !== 'https:' || !MEDIA_HOSTS.test(u.hostname)) return send(res, 403, { error: 'host not allowed' });
+  const key = createHash('sha1').update(u.href).digest('hex');
+  const file = path.join(MEDIA_DIR, key);
+  if (!fs.existsSync(file)) {
+    if (!inflight.has(key)) inflight.set(key, (async () => {
+      const r = await fetch(u.href, { headers: { 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Safari/537.36' }, signal: AbortSignal.timeout(20_000) });
+      const type = r.headers.get('content-type') || '';
+      if (!r.ok || !type.startsWith('image/')) throw new Error(`upstream ${r.status} ${type}`);
+      const buf = Buffer.from(await r.arrayBuffer());
+      if (buf.length > 8e6) throw new Error('too large');
+      fs.writeFileSync(file + '.tmp', buf);
+      fs.writeFileSync(file + '.type', type);
+      fs.renameSync(file + '.tmp', file);
+    })().finally(() => inflight.delete(key)));
+    try { await inflight.get(key); } catch (e) { return send(res, 502, { error: e.message }); }
+  }
+  res.writeHead(200, { 'content-type': fs.readFileSync(file + '.type', 'utf8'), 'cache-control': 'private, max-age=31536000, immutable', 'x-content-type-options': 'nosniff' });
+  fs.createReadStream(file).pipe(res);
+}
+
+function pruneMedia() {
+  try {
+    const files = fs.readdirSync(MEDIA_DIR).filter(f => !f.includes('.')).map(f => { const s = fs.statSync(path.join(MEDIA_DIR, f)); return { f, size: s.size, t: s.atimeMs }; });
+    let total = files.reduce((a, b) => a + b.size, 0);
+    for (const x of files.sort((a, b) => a.t - b.t)) {
+      if (total <= MEDIA_CAP) break;
+      for (const ext of ['', '.type']) fs.rmSync(path.join(MEDIA_DIR, x.f + ext), { force: true });
+      total -= x.size;
+    }
+  } catch (e) { log('media prune', e.message); }
+}
+setInterval(pruneMedia, 3600e3).unref();
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml' };
 
@@ -192,6 +276,7 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, r);
     }
     if (req.method === 'GET' && u.pathname === '/api/items') return send(res, 200, listItems(u.searchParams));
+    if (req.method === 'GET' && u.pathname === '/media') return mediaProxy(res, u.searchParams.get('u'));
     if (req.method === 'GET' && u.pathname === '/api/facets') return send(res, 200, facets());
     if (req.method === 'POST' && u.pathname === '/api/reparse') { const r = reparse(); log('reparse', JSON.stringify(r)); return send(res, 200, r); }
     if (req.method === 'GET' && u.pathname === '/api/sources') {
@@ -216,6 +301,52 @@ const server = http.createServer(async (req, res) => {
       if (srcAct[2] === 'delete') db.prepare('delete from sources where id = ?').run(id);
       if (srcAct[2] === 'toggle') db.prepare('update sources set enabled = 1 - enabled where id = ?').run(id);
       if (srcAct[2] === 'refresh') { db.prepare('update sources set last_hash = null where id = ?').run(id); await poller.pollNow(id); }
+      return send(res, 200, { ok: true });
+    }
+    if (req.method === 'GET' && u.pathname === '/api/categories') return send(res, 200, categories());
+    // Confirm (1), reject (-1) or clear (0) a label on one post; or add a new label by name.
+    const lab = /^\/api\/items\/(.+)\/label$/.exec(u.pathname);
+    if (req.method === 'POST' && lab) {
+      const itemId = decodeURIComponent(lab[1]);
+      const b = JSON.parse(await readBody(req, 1e4) || '{}');
+      let labelId = Number(b.labelId);
+      if (!labelId && b.layer && b.name) {
+        const name = String(b.name).trim().slice(0, 80);
+        labelId = db.prepare('select id from labels where layer = ? and name = ?').get(b.layer, name)?.id
+          ?? db.prepare("insert into labels(layer, name, source, created) values (?, ?, 'user', ?)").run(b.layer, name, Date.now()).lastInsertRowid;
+      }
+      if (b.source === 'agent') {
+        // An assistant's suggestion: never overrides your own decision on that label.
+        const prob = Math.max(0, Math.min(1, Number(b.prob) || 0.7));
+        db.prepare(`insert into item_labels(item_id, label_id, prob, source, decided, updated) values (?, ?, ?, 'agent', 0, ?)
+          on conflict(item_id, label_id) do update set prob = excluded.prob, source = 'agent', updated = excluded.updated where item_labels.decided = 0`).run(itemId, labelId, prob, Date.now());
+        return send(res, 200, { ok: true, labelId });
+      }
+      const decided = Math.max(-1, Math.min(1, Number(b.decided) || 0));
+      db.prepare(`insert into item_labels(item_id, label_id, prob, source, decided, updated) values (?, ?, ?, 'user', ?, ?)
+        on conflict(item_id, label_id) do update set decided = excluded.decided, updated = excluded.updated`).run(itemId, labelId, decided === 1 ? 1 : 0, decided, Date.now());
+      return send(res, 200, { ok: true, labelId });
+    }
+    if (req.method === 'POST' && u.pathname === '/api/labels') {
+      const b = JSON.parse(await readBody(req, 1e5) || '{}');
+      const kw = Array.isArray(b.keywords) ? b.keywords.map(String).filter(Boolean).slice(0, 100) : null;
+      const source = b.source === 'agent' ? 'agent' : 'user';
+      if (b.id) {
+        // A renamed label is pinned (source user/agent) so regrouping keeps its name.
+        db.prepare(`update labels set name = coalesce(?, name), description = coalesce(?, description), keywords = case when ? then ? else keywords end,
+          source = case when source in ('mock', 'ai') and ? is not null then ? else source end where id = ?`)
+          .run(b.name || null, b.description ?? null, Array.isArray(b.keywords) ? 1 : 0, kw && kw.length ? JSON.stringify(kw) : null, b.name || null, source, Number(b.id));
+      } else {
+        db.prepare('insert into labels(layer, name, description, keywords, source, created) values (?, ?, ?, ?, ?, ?)').run(b.layer, String(b.name).trim().slice(0, 80), b.description || null, kw && kw.length ? JSON.stringify(kw) : null, source, Date.now());
+      }
+      categorizer.rulesChanged();
+      cf?.labelsChanged();
+      return send(res, 200, { ok: true });
+    }
+    const labDel = /^\/api\/labels\/(\d+)\/delete$/.exec(u.pathname);
+    if (req.method === 'POST' && labDel) {
+      db.prepare('delete from item_labels where label_id = ?').run(Number(labDel[1]));
+      db.prepare('delete from labels where id = ?').run(Number(labDel[1]));
       return send(res, 200, { ok: true });
     }
     const save = /^\/api\/items\/(.+)\/save$/.exec(u.pathname);
@@ -246,4 +377,9 @@ server.listen(PORT, '127.0.0.1', () => {
   log(`FeedMerge on http://127.0.0.1:${PORT}`);
   startTagger(db, readConfig, log);
   poller = startPoller(db, ingest, log, readConfig);
+  categorizer = startCategorizer(db, log, {
+    aiActive: () => !!cloudflareConfig(readConfig),
+    aiStories: () => embeddingStories(db, log, Number(readConfig().cloudflare?.storyThreshold) || 0.8),
+  });
+  cf = startCloudflare(db, readConfig, log, { onEmbedded: () => categorizer.recluster() });
 });
