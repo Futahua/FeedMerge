@@ -215,6 +215,22 @@
       <div class="ig-foot">${embedBtn(it)}</div>`;
   };
 
+  // Facebook's footer: a summary line (reactions left, comments and shares right, hidden
+  // when there are none), then the three action buttons.
+  const FB = {
+    like: '<svg viewBox="0 0 20 20"><path d="M6.5 8.5v8.25M6.5 8.5H3.75v8.25H6.5m0-8.25 3.1-5.4a1.6 1.6 0 0 1 2.95 1.1l-.6 3.05h3.9a1.6 1.6 0 0 1 1.57 1.92l-1.3 6.3a1.6 1.6 0 0 1-1.57 1.28H6.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg>',
+    comment: '<svg viewBox="0 0 20 20"><path d="M10 3c4.14 0 7.25 2.8 7.25 6.25S14.14 15.5 10 15.5c-.8 0-1.57-.1-2.3-.3L4 17l.75-3.1C3.6 12.8 2.75 11.1 2.75 9.25 2.75 5.8 5.86 3 10 3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>',
+    share: '<svg viewBox="0 0 20 20"><path d="M11.5 4.5 17 9.75l-5.5 5.25v-3.1c-3.9 0-6.4 1.2-8.25 3.6.6-4.3 3-7.4 8.25-8V4.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>',
+    reacted: '<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="8" fill="#0866ff"/><path d="M5.2 7.2v4.3M5.2 7.2H4v4.3h1.2m0-4.3 1.7-2.9a.8.8 0 0 1 1.5.6l-.3 1.6h2.1a.8.8 0 0 1 .8 1l-.7 3.2a.8.8 0 0 1-.8.6H5.2" fill="#fff" stroke="#fff" stroke-width=".6" stroke-linejoin="round"/></svg>',
+  };
+  function fbFoot(it) {
+    const m = it.metrics;
+    const right = [m.comments ? `${short(m.comments)} comment${m.comments === 1 ? '' : 's'}` : '', m.reposts ? `${short(m.reposts)} share${m.reposts === 1 ? '' : 's'}` : '', m.views ? `${short(m.views)} views` : ''].filter(Boolean).join(' · ');
+    const summary = m.likes || right
+      ? `<div class="fb-sum">${m.likes ? `<span class="fb-react">${FB.reacted}${short(m.likes)}</span>` : ''}<span class="grow"></span><span>${right}</span></div>` : '';
+    return `${summary}<div class="fb-acts"><span>${FB.like}Like</span><span>${FB.comment}Comment</span><span>${FB.share}Share</span>${embedBtn(it)}</div>`;
+  }
+
   R.facebook = it => {
     const m = it.metrics, f = it.flags;
     const media = it.media.filter(x => x.url);
@@ -222,7 +238,7 @@
       ${it.text ? `<div class="fb-text clamp6">${richText(it.text, 'facebook')}</div>` : ''}
       ${media.length ? `<div class="fb-media">${media.length > 4 ? carousel(media, '1 / 1') : grid(media)}</div>` : ''}
       ${f.link ? `<a class="linkcard" href="${esc(f.link)}" target="_blank" rel="noopener noreferrer"><div><span class="mute">${esc(host(f.link))}</span><b>${esc(f.linkTitle || '')}</b></div></a>` : ''}
-      <div class="fb-stats">${act('like', m.likes || null)}${act('comment', m.comments || null)}${act('share', m.reposts || null)}${m.views ? act('views', m.views) : ''}<span class="grow"></span>${embedBtn(it)}</div>`;
+      ${fbFoot(it)}`;
   };
 
   // General pages, kept minimal: the site's icon and whichever is shorter, its name or its

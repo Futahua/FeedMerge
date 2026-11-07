@@ -19,7 +19,7 @@
 .p-bluesky { --c-bg: #fff; --c-fg: #0b0f14; --c-muted: #42576c; --c-line: #d4dbe2; --c-hover: #f1f3f5; --c-link: #1083fe; }
 .p-threads { --c-bg: #fff; --c-fg: #000; --c-muted: #999; --c-line: #e5e5e5; --c-hover: #f5f5f5; --c-link: #0095f6; }
 .p-instagram { --c-bg: #fff; --c-fg: #000; --c-muted: #737373; --c-line: #dbdbdb; --c-hover: #fafafa; --c-link: #00376b; }
-.p-facebook { --c-bg: #fff; --c-fg: #080809; --c-muted: #65686c; --c-line: #ced0d4; --c-hover: #f2f2f2; --c-link: #0064d1; font-family: "Segoe UI Historic", "Segoe UI", -apple-system, system-ui, sans-serif; font-size: 15px; }
+.p-facebook { --c-bg: #fff; --c-fg: #080809; --c-muted: #65686c; --c-line: #ced0d4; --c-hover: #f2f2f2; --c-link: #0064d1; font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.34; }
 .p-reddit { --c-bg: #fff; --c-fg: #0f1a1c; --c-muted: #576f76; --c-line: #e5ebee; --c-hover: #f6f8f9; --c-link: #0a449b; --c-pill: #e5ebee; --c-pill-h: #d2dadd; }
 .p-youtube { --c-bg: #fff; --c-fg: #0f0f0f; --c-muted: #606060; --c-line: #e5e5e5; --c-hover: #f2f2f2; --c-link: #065fd4; font-family: Roboto, "Segoe UI", system-ui, sans-serif; }
 .p-tiktok { --c-bg: #000; --c-fg: #fff; --c-muted: rgb(255 255 255 / .75); --c-line: #222; --c-hover: #161616; --c-link: #fff; }
@@ -139,11 +139,18 @@
 .fb-head > div { display: flex; flex-direction: column; min-width: 0; }
 .fb-head b { font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fb-head .mute { font-size: 13px; }
-.fb-text { padding: 0 16px 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.fb-text { padding: 0 16px; margin-bottom: 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .fb-media .mgrid { border-radius: 0; }
 .p-facebook .linkcard { margin: 0 16px 10px; }
-.fb-stats { display: flex; gap: 12px; align-items: center; padding: 8px 16px; color: var(--c-muted); font-size: 14px; }
-.fb-stats .act svg { width: 16px; height: 16px; }
+.fb-sum { display: flex; align-items: center; gap: 6px; padding: 10px 16px 8px; color: var(--c-muted); font-size: 14px; }
+.fb-react { display: inline-flex; align-items: center; gap: 6px; }
+.fb-react svg { width: 18px; height: 18px; }
+.fb-acts { display: flex; align-items: center; margin: 0 12px; padding: 4px 0; border-top: 1px solid var(--c-line); }
+.fb-acts > span { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; height: 34px; border-radius: 6px; color: var(--c-muted); font-size: 14px; font-weight: 600; white-space: nowrap; }
+.fb-acts > span:hover { background: var(--c-hover); }
+.fb-acts svg { width: 19px; height: 19px; flex: none; }
+.fb-acts .embed-btn { flex: none; margin-left: 4px; }
+@container (max-width: 260px) { #feed .fb-acts > span { font-size: 0; gap: 0; } }
 
 /* Carousel (Instagram, galleries) */
 .car { position: relative; background: #000; overflow: hidden; }
