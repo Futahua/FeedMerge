@@ -2,7 +2,7 @@ import { setMachineLabels } from './categorize.mjs';
 
 // Optional topic + story labelling through any OpenAI-compatible chat API (Gemini, Groq,
 // OpenRouter, ...). Runs in the background; capture and viewing never wait for it.
-const SYSTEM = `You label social media posts for a personal merged feed.
+export const SYSTEM = `You label social media posts for a personal merged feed.
 For each item return:
 - "topics": 1-3 short topic labels (1-4 words, Title Case, broad enough to recur, e.g. "AI Models", "Architecture", "Formula 1"). Reuse labels from existingTopics whenever one fits.
 - "story": if the item is about a specific event, release, announcement or news story that other posts are likely discussing too, a short neutral label for that story (max 8 words). Reuse a label from recentStories exactly when it is the same story. Otherwise null.
@@ -31,7 +31,7 @@ export function startTagger(db, readConfig, log) {
       const res = await fetch(cfg.baseUrl.replace(/\/+$/, '') + '/chat/completions', {
         method: 'POST',
         headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
-        body: JSON.stringify({ model: cfg.model, temperature: 0.2, messages: [{ role: 'system', content: SYSTEM }, { role: 'user', content: JSON.stringify(payload) }] }),
+        body: JSON.stringify({ model: cfg.model, temperature: Number(cfg.temperature ?? .2), messages: [{ role: 'system', content: cfg.systemPrompt || SYSTEM }, { role: 'user', content: JSON.stringify(payload) }] }),
         signal: AbortSignal.timeout(120_000),
       });
       if (!res.ok) throw Object.assign(new Error(`HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`), { status: res.status });

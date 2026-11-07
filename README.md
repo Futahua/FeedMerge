@@ -150,3 +150,42 @@ no JavaScript or regular expressions. Existing DNS/redirect checks own fetching;
 private-network sources are excluded from the browser queue. Multiple browser profiles
 still share this queue, so simultaneous captures can occur but ingestion deduplicates
 original post identities.
+
+
+### Agent backend and display controls
+
+`get_control_catalog` describes the editable names, current effective values, bounds,
+owner and activation timing. `configure_backend` previews a patch, then applies its
+preview ID using the same stale-safe receipts/undo as other management operations.
+Null removes an override. The catalog includes:
+
+- Per-platform mixed-feed proportions (all supported platforms), preserving complete
+  platform-only browsing, search and saved posts.
+- Browser scheduling, quiet hours and each scheduled platform's enabled state,
+  interval and scroll count. These shared controls require extension 0.6.1 to be
+  reloaded. They override local scheduler preferences only where explicitly set;
+  removing the override restores the local preference. An already scheduled deadline
+  is not retroactively shortened; the new interval schedules its next run.
+- Chat classifier enable/model/prompt/temperature/batch/interval, Cloudflare
+  enable/categorization/budget/batch/interval, and story similarity threshold.
+  Provider changes can change cost. Credentials and network destinations are not
+  editable or returned by this control catalog.
+- Wikipedia enable/pace/counts/repeat windows, source polling enable, existing
+  retention keys, and viewer card/text-height defaults. Browser-local zoom wins over
+  a shared card-width default. Viewer display defaults load on page refresh.
+
+Overrides live in the existing SQLite `meta` owner, not a second config file.
+Retention edits use the exact keys retention already reads. Local config-file
+values and secrets stay intact; local environment retention overrides are locked.
+Settings previews also detect intervening changes to effective config-file values.
+
+`request_backend_job` uses the existing `agent_jobs` queue and records actual work
+status in `agent_job_runs`. Reparse, expiry, reclustering and Wikipedia collection
+call their existing owners. Reparse/expiry take a SQLite backup under `data/backups`
+before running. Inspect `get_ingestion_status.jobs` for completion and failures.
+Receipts cancel only work that has not started; completed work is not automatically
+reversed. Running jobs at a restart become interrupted and require an explicit retry,
+so side effects are not blindly repeated. There is a bounded maintenance queue.
+No job grants arbitrary shell access, private-network fetches, login credentials,
+CAPTCHA bypass or new host permissions. Current browser selections/focus and arbitrary
+pixel-level CSS styling remain outside this MCP contract.

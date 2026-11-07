@@ -156,12 +156,12 @@ export function startCloudflare(db, readConfig, log, hooks = {}) {
     const cap = Number(cfg.dailyNeuronCap) || 9000;
     try {
       let embedded = 0, decided = 0;
-      for (let i = 0; i < 6 && usage.get() < cap; i++) { const n = await embedBatch(cfg); embedded += n; if (!n) break; }
+      for (let i = 0; i < (Number(cfg.embeddingBatches)||6) && usage.get() < cap; i++) { const n = await embedBatch(cfg); embedded += n; if (!n) break; }
       if (!db.prepare("select v from meta where k = 'edges_v2'").get() && !needEmbed.get()) { rebuildEdges(); hooks.onEmbedded?.(); }
       if (embedded) hooks.onEmbedded?.();
       if (cfg.categorize !== false) {
         const questions = questionsFor();
-        for (let i = 0; i < 40 && usage.get() < cap; i++) {
+        for (let i = 0; i < (Number(cfg.classificationBatchSize)||40) && usage.get() < cap; i++) {
           const it = needDecide.get(CF_VERSION, Date.now() - RECENT);
           if (!it) break;
           // Nearly empty posts (emoji-only captions, bare links) aren't worth a call; rules keep their labels.
@@ -177,7 +177,7 @@ export function startCloudflare(db, readConfig, log, hooks = {}) {
       log('cloudflare error', e.message, `pausing ${Math.round(backoff / 1000)}s`);
     } finally { busy = false; }
   }
-  const loop = () => { tick().finally(() => setTimeout(loop, backoff || 30_000).unref?.()); };
+  const loop = () => { tick().finally(() => setTimeout(loop, backoff || (Number(readConfig().cloudflare?.intervalSeconds)||30)*1000).unref?.()); };
   setTimeout(loop, 4_000).unref?.();
 
   return {

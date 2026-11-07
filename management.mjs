@@ -1,10 +1,11 @@
+import { normalizeControlChanges, settingKey, controlCatalog } from './backend-controls.mjs';
 import { normalizeRules } from './source-rules.mjs';
 import { randomUUID } from 'node:crypto';
 import { transaction } from './sqlite-transaction.mjs';
 
 const fail = message => Object.assign(new Error(message), { status: 409 });
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
-const operations = new Set(['update_post_labels', 'mark_posts_reviewed', 'merge_stories', 'reclassify_posts', 'save_posts', 'source_control','edit_label','story_edit','collection_edit']);
+const operations = new Set(['update_post_labels', 'mark_posts_reviewed', 'merge_stories', 'reclassify_posts', 'save_posts', 'source_control','edit_label','story_edit','collection_edit','backend_settings','backend_job']);
 function ids(input, field, numeric = false) {
   const values = input[field];
   if (!Array.isArray(values) || !values.length || values.length > 100) throw fail(`${field} requires 1–100 explicit IDs.`);
@@ -12,17 +13,26 @@ function ids(input, field, numeric = false) {
   return [...new Set(values)].sort(numeric ? (a, b) => a - b : undefined);
 }
 
-export function createManagement(db) {
-  db.exec(`create table if not exists agent_previews(id text primary key, operation text, input text, before_json text, created integer, expires integer);
+export function createManagement(db, readConfig = () => ({})) {
+  db.exec(`create table if not exists meta(k text primary key,v text);
+    create table if not exists agent_previews(id text primary key, operation text, input text, before_json text, created integer, expires integer);
     create table if not exists agent_receipts(id text primary key, preview_id text unique, operation text, input text, before_json text, after_json text, created integer, undone integer);
     create table if not exists post_reviews(item_id text primary key, reviewed_at integer, actor text);
     create table if not exists story_aliases(from_id integer primary key, to_id integer);
     create table if not exists agent_jobs(id text primary key, kind text, input text, created integer);
+    create table if not exists agent_job_runs(id text primary key,status text,started integer,finished integer,result text,error text);
     create table if not exists collections(id text primary key,name text,description text,created integer);
     create table if not exists collection_items(collection_id text,item_id text,primary key(collection_id,item_id));`);
 
   function normalize(operation, input) {
     if (!operations.has(operation)) throw fail('Unsupported management operation.');
+    if(operation==='backend_settings')return {changes:normalizeControlChanges(input.changes)};
+    if(operation==='backend_job') {
+      if(!['reparse','expire','recluster','wikipedia'].includes(input.action))throw fail('Unknown backend job.');
+      if(db.prepare("select count(*) n from agent_jobs j left join agent_job_runs r on r.id=j.id where j.kind='maintenance' and (r.id is null or r.status='running')").get().n>=20)throw fail('Maintenance queue is full. Inspect jobs before adding more.');
+      return {action:input.action,job_id:input.job_id||randomUUID()};
+    }
+
     if(operation==='collection_edit'){
       if(!['create','rename','add','remove','delete'].includes(input.action))throw fail('Unknown collection action.');
       const id=input.id||randomUUID(),existing=db.prepare('select * from collections where id=?').get(id);
@@ -104,6 +114,9 @@ export function createManagement(db) {
   // Capture only the rows/columns this operation owns. Restore never replaces whole tables.
   function snapshot(operation, input) {
     const out = {};
+    if(operation==='backend_settings')return {meta:Object.keys(input.changes).flatMap(name=>db.prepare('select * from meta where k=?').all(settingKey(name))),effective:controlCatalog(db,readConfig()).filter(row=>Object.hasOwn(input.changes,row.name)).map(row=>({name:row.name,value:row.value}))};
+    if(operation==='backend_job')return {agent_jobs:db.prepare('select * from agent_jobs where id=?').all(input.job_id),agent_job_runs:db.prepare('select * from agent_job_runs where id=?').all(input.job_id)};
+
     if(operation==='collection_edit')return {collections:db.prepare('select * from collections where id=?').all(input.id),collection_items:db.prepare('select * from collection_items where collection_id=? order by item_id').all(input.id)};
     if(operation==='edit_label'||operation==='story_edit'){
       const keys=[input.id,...input.source_id?[input.source_id]:[]];
@@ -126,6 +139,17 @@ export function createManagement(db) {
   }
 
   function mutate(operation, input, stamp) {
+
+    if(operation==='backend_settings'){
+      for(const [name,value] of Object.entries(input.changes)){
+        if(value===null)db.prepare('delete from meta where k=?').run(settingKey(name));
+        else db.prepare('insert into meta(k,v) values (?,?) on conflict(k) do update set v=excluded.v').run(settingKey(name),JSON.stringify(value));
+      }
+      return;
+    }
+    if(operation==='backend_job'){
+      db.prepare('insert into agent_jobs values (?,?,?,?)').run(input.job_id,'maintenance',JSON.stringify(input),stamp);return;
+    }
     if(operation==='collection_edit'){
       if(input.action==='create')db.prepare('insert into collections values (?,?,?,?)').run(input.id,input.name,input.description,stamp);
       if(input.action==='rename')db.prepare('update collections set name=? where id=?').run(input.name,input.id);
@@ -179,6 +203,14 @@ export function createManagement(db) {
   }
 
   function restore(operation, input, before) {
+    if(operation==='backend_settings'){
+      for(const name of Object.keys(input.changes))db.prepare('delete from meta where k=?').run(settingKey(name));
+      for(const row of before.meta)db.prepare('insert into meta(k,v) values (?,?)').run(row.k,row.v);return;
+    }
+    if(operation==='backend_job'){
+      db.prepare('delete from agent_jobs where id=?').run(input.job_id);return;
+    }
+
     if(operation==='collection_edit'){
       db.prepare('delete from collection_items where collection_id=?').run(input.id);db.prepare('delete from collections where id=?').run(input.id);
       for(const row of before.collections)db.prepare('insert into collections values (?,?,?,?)').run(row.id,row.name,row.description,row.created);
@@ -221,6 +253,7 @@ export function createManagement(db) {
       const id = randomUUID(), created = Date.now();
       db.prepare('insert into agent_previews values (?,?,?,?,?,?)').run(id, operation, JSON.stringify(input), JSON.stringify(before), created, created + 15 * 60000);
       return { preview_id: id, operation, input, before, after, expires_at: new Date(created + 15 * 60000).toISOString(), business_changes: false, preview_recorded: true,
+        ...(operation==='backend_job'?{warning:'Explicit backend work may change derived data or delete expired records. Queue cancellation only before work starts; completed work is not undone by this receipt.'}:{}),
         ...(operation === 'reclassify_posts' ? { warning: 'Queues existing classifiers and may consume provider budget. Classifier outputs cannot be rolled back using this queue receipt.' } : {}) };
     });
   }
@@ -246,7 +279,8 @@ export function createManagement(db) {
         job_id = receipt;
         db.prepare('insert into agent_jobs values (?,?,?,?)').run(job_id, 'reclassify', plan.input, created);
       }
-      return { receipt_id: receipt, operation: plan.operation, applied: true, ...(job_id ? { job_id, status: 'queued', manual_decisions_preserved: true } : {}) };
+      if(plan.operation==='backend_job')job_id=input.job_id;
+      return { receipt_id: receipt, operation: plan.operation, applied: true, ...(job_id ? { job_id, status: 'queued', ...(plan.operation==='reclassify_posts'?{manual_decisions_preserved:true}:{}) } : {}) };
     });
   }
 
@@ -268,6 +302,11 @@ export function createManagement(db) {
   function history() { return db.prepare('select id,operation,created,undone from agent_receipts order by created desc limit 100').all(); }
   function jobs(provider='rules') {
     return db.prepare('select * from agent_jobs order by created desc limit 100').all().map(job => {
+      if(job.kind==='maintenance'){
+        const run=db.prepare('select * from agent_job_runs where id=?').get(job.id);
+        return {id:job.id,kind:job.kind,created:job.created,action:JSON.parse(job.input).action,status:run?.status||'queued',started:run?.started,finished:run?.finished,result:run?.result?JSON.parse(run.result):null,error:run?.error};
+      }
+
       const input = JSON.parse(job.input), pending = input.post_ids.filter(id => {
         const row = db.prepare('select ai_done,cf_done,cat_done from items where id=?').get(id);
         return row && (provider==='cloudflare'?row.cf_done:provider==='chat'?row.ai_done:row.cat_done)===0;

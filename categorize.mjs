@@ -164,18 +164,23 @@ export function startCategorizer(db, log, opts = {}) {
   }
 
   let storiesDirty = true;
+  function reclusterNow() {
+    if(opts.aiActive?.())opts.aiStories();else clusterStories(db,log);
+    storiesDirty=false;
+    return {stories:db.prepare("select count(*) n from labels where layer='story'").get().n};
+  }
   function tick() {
     let n = 0, k;
     while ((k = runBatch()) > 0 && n < 4000) n += k;
     if (n) { log('categorized', n); storiesDirty = true; }
     if (storiesDirty) {
-      try { if (opts.aiActive?.()) opts.aiStories(); else clusterStories(db, log); } catch (e) { log('stories error', e.message); }
+      try { reclusterNow(); } catch (e) { log('stories error', e.message); }
       storiesDirty = false;
     }
   }
   setInterval(tick, 20_000).unref?.();
   setTimeout(tick, 2_000).unref?.();
-  return { rulesChanged() { loadRules(); db.prepare('update items set cat_done = 0').run(); storiesDirty = true; }, recluster() { storiesDirty = true; } };
+  return { rulesChanged() { loadRules(); db.prepare('update items set cat_done = 0').run(); storiesDirty = true; }, recluster() { storiesDirty = true; }, reclusterNow };
 }
 
 // ---------- Mock story clustering ----------

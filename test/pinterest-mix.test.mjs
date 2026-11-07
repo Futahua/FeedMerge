@@ -11,7 +11,7 @@ test('mixed feed keeps two of every five Pinterest posts without losing other pl
   for(let i=0;i<7;i++)insert.run('x'+i,'x',30+i);
   const source=fs.readFileSync(new URL('../server.mjs',import.meta.url),'utf8');
   const fn=source.slice(source.indexOf('function listItems('),source.indexOf('function facets('));
-  const ctx=vm.createContext({db,Date,Math,Number,rowOut:x=>x,attachLabels:x=>x});vm.runInContext(fn,ctx);
+  const ctx=vm.createContext({db,Date,Math,Number,readConfig:()=>({}),rowOut:x=>x,attachLabels:x=>x});vm.runInContext(fn,ctx);
   const query=s=>ctx.listItems(new URLSearchParams(s));
   const mixed=query('pinterest_mix=reduced&ads=1&limit=200');
   assert.equal(mixed.filter(x=>x.platform==='pinterest').length,10);

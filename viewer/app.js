@@ -33,7 +33,7 @@ function params(extra = {}) {
   if (state.ads) p.set('ads', '1');
   if (state.review) p.set('review', '1');
   if (state.sort === 'shuffle') p.set('seed', shuffleSeed);
-  if (!state.q && !state.saved && !(state.platforms.size === 1 && state.platforms.has('pinterest'))) p.set('pinterest_mix', 'reduced');
+  if (!state.q && !state.saved && state.platforms.size !== 1) p.set('feed_mix', 'configured');
   p.set('sort', state.sort === 'balanced' ? 'captured' : state.sort);
   for (const [k, v] of Object.entries(extra)) p.set(k, v);
   return p;
@@ -329,6 +329,13 @@ document.documentElement.style.setProperty('--card-w', cardW + 'px');
 const hint = Object.assign(document.createElement('div'), { className: 'zoom-hint' });
 document.body.append(hint);
 let hintTimer = 0, zoomFrame = 0, zoomAnchor = null;
+fetch('/api/viewer-policy').then(r=>r.json()).then(policy=>{
+  if(policy.xTextMaxHeight)document.documentElement.style.setProperty('--x-text-max-height',policy.xTextMaxHeight+'px');
+  if(policy.facebookTextMaxHeight)document.documentElement.style.setProperty('--fb-text-max-height',policy.facebookTextMaxHeight+'px');
+  let custom=false;try{custom=!!localStorage.getItem('fm-card-w');}catch{}
+  if(!custom&&policy.defaultCardWidth){cardW=Math.min(CARD_MAX,Math.max(CARD_MIN,policy.defaultCardWidth));document.documentElement.style.setProperty('--card-w',cardW+'px');layoutCards();}
+}).catch(()=>{});
+
 function zoomNow() {
   zoomFrame = 0;
   const vh = innerHeight;

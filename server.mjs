@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 import { createHash } from 'node:crypto';
-import { DatabaseSync } from 'node:sqlite';
+import { DatabaseSync, backup } from 'node:sqlite';
 import { parseCapture } from './parsers.mjs';
 import { startTagger } from './ai.mjs';
 import { initSources, resolveSource, startPoller, inspectSource } from './sources.mjs';
@@ -19,6 +19,8 @@ import { createManagement } from './management.mjs';
 import { initArticles, getArticle } from './article.mjs';
 import { checkedDestination } from './source-fetch.mjs';
 import { normalizeRules, filterSourceLinks } from './source-rules.mjs';
+import { applyControlOverrides, controlCatalog } from './backend-controls.mjs';
+import { SYSTEM as CHAT_SYSTEM } from './ai.mjs';
 import { startWikipedia } from './wikipedia.mjs';
 
 const DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -27,8 +29,9 @@ const CONFIG = process.env.FEEDMERGE_CONFIG || path.join(DIR, 'config.json');
 fs.mkdirSync(DATA, { recursive: true });
 if (!fs.existsSync(CONFIG)) fs.copyFileSync(path.join(DIR, 'config.example.json'), CONFIG);
 
+let settingsDb = null;
 export function readConfig() {
-  try { return JSON.parse(fs.readFileSync(CONFIG, 'utf8')); } catch { return {}; }
+  try { return applyControlOverrides(settingsDb,JSON.parse(fs.readFileSync(CONFIG, 'utf8'))); } catch { return {}; }
 }
 const PORT = Number(process.env.FEEDMERGE_PORT || readConfig().port || 4747);
 // Only these Host headers are served (blocks DNS-rebinding pages). config.json "hosts" adds
@@ -68,8 +71,9 @@ try { db.exec('alter table raw add column profile text'); } catch {}
 initSources(db);
 initArticles(db);
 initCategories(db);
+settingsDb = db;
 initCloudflare(db);
-const management = createManagement(db);
+const management = createManagement(db,readConfig);
 let poller = null;
 let categorizer = null;
 let cf = null;
@@ -180,10 +184,15 @@ function listItems(p) {
   if (platforms.length) { where.push(`platform in (${platforms.map(() => '?').join(',')})`); args.push(...platforms); }
   // Thin the mixed viewer feed, not storage, search, saved items or Pinterest-only browsing.
   // Stable rank sampling happens before LIMIT/OFFSET, so pagination stays full and repeatable.
-  if (p.get('pinterest_mix') === 'reduced' && !p.get('q') && p.get('saved') !== '1' && !(platforms.length === 1 && platforms[0] === 'pinterest')) {
-    where.push(`(platform != 'pinterest' or rowid in (select rid from
-      (select rowid rid, row_number() over (order by rowid) n from items where platform = 'pinterest')
-      where (n - 1) % 5 < 2))`);
+  if ((p.get('feed_mix') === 'configured' || p.get('pinterest_mix') === 'reduced') && !p.get('q') && p.get('saved') !== '1' && platforms.length !== 1) {
+    const policy=readConfig().viewer?.platforms || {};
+    for(const platform of ['pinterest','reddit','youtube','x','facebook','instagram','threads','tiktok','web','bluesky']){
+      const keep=Number(policy[platform]?.keepPercent ?? (platform==='pinterest'?40:100));
+      if(keep>=100)continue;
+      where.push(`(platform != '${platform}' or rowid in (select rid from
+        (select rowid rid, row_number() over (order by rowid) n from items where platform = '${platform}')
+        where cast(n * ${keep} / 100 as integer) > cast((n - 1) * ${keep} / 100 as integer)))`);
+    }
   }
   if (p.get('context')) { where.push('context = ?'); args.push(p.get('context')); }
   for (const id of (p.get('label') || '').split(',').filter(Boolean)) {
@@ -301,6 +310,12 @@ const server = http.createServer(async (req, res) => {
     if (mutating && req.headers['x-feedmerge'] !== '1') return send(res, 403, { error: 'header' });
     if(mutating&&req.headers['x-feedmerge-agent']==='1'&&readConfig().agent?.writes===false)return send(res,403,{error:'Agent writes are disabled by the local owner.'});
 
+    if(req.method==='GET'&&u.pathname==='/api/backend/controls') {
+      const config=readConfig();config.ai={...config.ai,systemPrompt:config.ai?.systemPrompt||CHAT_SYSTEM};
+      return send(res,200,{controls:controlCatalog(db,config),surfaces:{posts:'get_post/search_posts; source captures remain originals',labels:'update_post_labels/edit_taxonomy_label',stories:'create_story/merge_stories/split_story',collections:'manage_collection',sources:'manage_source/inspect_source/test_source_rules/configure_source_extraction/request_source_capture',backend:'configure_backend/request_backend_job/get_ingestion_status',viewer:'shared defaults; current browser zoom and selection stay local',browser:'shared scheduler policy, subject to explicit Chrome host permissions'},jobs:['reparse','expire','recluster','wikipedia'],limitations:['No shell, arbitrary JavaScript, filesystem browsing or credential access through this contract.','No silent host-permission grants or CAPTCHA bypass.','Running/completed jobs are not rolled back by cancelling the queue receipt.']});
+    }
+    if(req.method==='GET'&&u.pathname==='/api/capture-policy')return send(res,200,readConfig().capture||{});
+    if(req.method==='GET'&&u.pathname==='/api/viewer-policy')return send(res,200,readConfig().viewer||{});
     const sourceInspect = /^\/api\/sources\/(\d+)\/(inspect|test-rules)$/.exec(u.pathname);
     if (sourceInspect && (req.method === 'GET' && sourceInspect[2] === 'inspect' || req.method === 'POST' && sourceInspect[2] === 'test-rules')) {
       const src = db.prepare('select * from sources where id=?').get(Number(sourceInspect[1]));
@@ -519,4 +534,24 @@ server.listen(PORT, '127.0.0.1', () => {
   });
   cf = startCloudflare(db, readConfig, log, { onEmbedded: () => categorizer.recluster() });
   wiki = startWikipedia(db, ingest, log, readConfig, cf);
+  // Reuse the management queue; never automatically rerun interrupted side effects.
+  db.prepare("update agent_job_runs set status='interrupted',finished=?,error='Server restarted during work; inspect before retrying.' where status='running'").run(Date.now());
+  let backendBusy=false;
+  const workBackend=async()=>{
+    if(backendBusy)return;
+    const job=db.prepare("select j.* from agent_jobs j left join agent_job_runs r on r.id=j.id where j.kind='maintenance' and r.id is null order by j.created limit 1").get();
+    if(!job)return;
+    backendBusy=true;
+    db.prepare("insert into agent_job_runs(id,status,started) values (?,'running',?)").run(job.id,Date.now());
+    try{
+      const action=JSON.parse(job.input).action;
+      let backupFile;
+      if(['reparse','expire'].includes(action)){const folder=path.join(DATA,'backups');fs.mkdirSync(folder,{recursive:true});backupFile=path.join(folder,`agent-job-${job.id}.sqlite`);await backup(db,backupFile);}
+      const result=action==='reparse'?reparse():action==='expire'?expire(db):action==='recluster'?categorizer.reclusterNow():await wiki.run();
+      db.prepare("update agent_job_runs set status='completed',finished=?,result=? where id=?").run(Date.now(),JSON.stringify({...result??{done:true},...(backupFile?{backup_created:true}:{} )}),job.id);
+    }catch(e){db.prepare("update agent_job_runs set status='failed',finished=?,error=? where id=?").run(Date.now(),String(e.message).slice(0,300),job.id);}
+    finally{backendBusy=false;}
+  };
+  setInterval(()=>workBackend().catch(e=>log('backend job',e.message)),2000).unref();
+
 });

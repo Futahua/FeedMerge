@@ -95,6 +95,8 @@ async function refreshState() {
   refresh.platforms ??= {};
   refresh.next ??= {};
   refresh.last ??= {};
+  try { const response=await fetch(SERVER+'/api/capture-policy');if(response.ok)refresh.policy=await response.json(); } catch {}
+
   for (const p of Object.keys(TARGETS)) refresh.platforms[p] ??= { on: true, hours: TARGETS[p].hours };
   // Apply the requested eighteen-hour schedule once per profile, without an immediate sweep.
   if (!refresh.pinterestSlowV3) {
@@ -130,9 +132,9 @@ async function openRefresh(platform) {
   await chrome.tabs.update(tab.id, { url: TARGETS[platform].url });
   await chrome.storage.local.set({ openRefresh: { tabId: tab.id, platform, opened: Date.now() } });
   refresh.last[platform] = Date.now();
-  refresh.next[platform] = Date.now() + jitter(refresh.platforms[platform].hours);
+  refresh.next[platform] = Date.now() + jitter(refresh.policy?.platforms?.[platform]?.hours ?? refresh.platforms[platform].hours);
   await saveRefresh(refresh);
-  setTimeout(() => chrome.tabs.sendMessage(tab.id, { type: 'fm-autoscroll', steps: platform === 'pinterest' ? 3 : 8 }).catch(() => {}), 9_000);
+  if ((refresh.policy?.platforms?.[platform]?.scrolls ?? (platform==='pinterest'?3:8)) > 0) setTimeout(() => chrome.tabs.sendMessage(tab.id, { type: 'fm-autoscroll', steps: refresh.policy?.platforms?.[platform]?.scrolls ?? (platform === 'pinterest' ? 3 : 8) }).catch(() => {}), 9_000);
   setTimeout(finishOpen, DWELL_MS);
 }
 
@@ -143,11 +145,12 @@ async function refreshTick(force) {
     else return;
   }
   const refresh = await refreshState();
-  if (!refresh.enabled && !force) return;
+  if (!(refresh.policy?.enabled ?? refresh.enabled) && !force) return;
   const h = new Date().getHours();
-  const quiet = refresh.quietFrom < refresh.quietTo ? h >= refresh.quietFrom && h < refresh.quietTo : h >= refresh.quietFrom || h < refresh.quietTo;
+  const from=refresh.policy?.quietFrom ?? refresh.quietFrom,to=refresh.policy?.quietTo ?? refresh.quietTo;
+  const quiet = from < to ? h >= from && h < to : h >= from || h < to;
   if (quiet && !force) return;
-  const due = Object.keys(TARGETS).filter(p => refresh.platforms[p].on && (force === p || Date.now() >= (refresh.next[p] || 0)));
+  const due = Object.keys(TARGETS).filter(p => (refresh.policy?.platforms?.[p]?.on ?? refresh.platforms[p].on) && (force === p || Date.now() >= (refresh.next[p] || 0)));
   if (due.length) return openRefresh(due[0]);
   const page = await renderedDue();
   if (page) await readRendered(page);

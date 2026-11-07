@@ -82,6 +82,22 @@ test('actual isolated API enforces rename preconditions, agent provenance and ma
     assert.equal((await api(`/api/rendered-sources/${sid}`,{links:[],final_url:'https://elsewhere.test/private'})).status,409);
     const probe=new DatabaseSync(path.join(dir,'feed.db'));probe.prepare("insert into sources(kind,name,url,interval_min,created) values ('rendered','private','http://127.0.0.1:12345/',60,1)").run();probe.close();
     assert.equal((await api('/api/rendered-sources')).value.length,1); // private targets never enter the browser queue
+    const controls=(await api('/api/backend/controls')).value;
+    assert(controls.controls.length>=50);assert(!JSON.stringify(controls).includes('apiToken'));
+    const settings=(await api('/api/agent/preview',{operation:'backend_settings',input:{changes:{'viewer.platforms.pinterest.keepPercent':25,'capture.platforms.pinterest.hours':18,'capture.platforms.pinterest.scrolls':3}}})).value;
+    assert.equal((await api('/api/viewer-policy')).value.platforms,undefined);
+    const settingReceipt=(await api('/api/agent/apply',{operation:'backend_settings',preview_id:settings.preview_id})).value;
+    assert.equal((await api('/api/viewer-policy')).value.platforms.pinterest.keepPercent,25);
+    assert.equal((await api('/api/capture-policy')).value.platforms.pinterest.scrolls,3);
+    await api('/api/agent/undo',{receipt_id:settingReceipt.receipt_id,apply:true});
+    assert.equal((await api('/api/viewer-policy')).value.platforms,undefined);
+    const work=(await api('/api/agent/preview',{operation:'backend_job',input:{action:'reparse'}})).value;
+    const queued=(await api('/api/agent/apply',{operation:'backend_job',preview_id:work.preview_id,expected_action:'reparse'})).value;
+    let status;
+    for(let i=0;i<50;i++){status=(await api('/api/ingestion-status')).value.jobs.find(j=>j.id===queued.job_id);if(['completed','failed'].includes(status?.status))break;await new Promise(resolve=>setTimeout(resolve,100));}
+    assert.equal(status?.status,'completed',status?.error);assert.equal(status.result.backup_created,true);
+    assert.equal((await api('/api/agent/undo',{receipt_id:queued.receipt_id,apply:true})).status,409);
+
 
   } finally {
     child.kill(); await new Promise(resolve=>child.exitCode!==null?resolve():child.once('exit',resolve));

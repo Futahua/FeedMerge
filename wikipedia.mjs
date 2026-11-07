@@ -88,7 +88,7 @@ export function startWikipedia(db, ingest, log, readConfig, ai) {
     const out = [];
     const list = (await subjects()).sort(() => Math.random() - 0.5);
     for (const s of list) {
-      if (out.length >= PER_RUN.related) break;
+      if (out.length >= Number(readConfig().wikipedia?.relatedPerRun ?? PER_RUN.related)) break;
       try {
         const hit = (await api(s.lang, { list: 'search', srsearch: s.name, srlimit: '1', srnamespace: '0' }, readConfig)).query?.search?.[0];
         if (!hit) continue;
@@ -107,7 +107,7 @@ export function startWikipedia(db, ingest, log, readConfig, ai) {
 
   async function random() {
     const out = [];
-    for (let tries = 0; tries < 4 && out.length < PER_RUN.random; tries++) {
+    for (let tries = 0; tries < 4 && out.length < Number(readConfig().wikipedia?.randomPerRun ?? PER_RUN.random); tries++) {
       const lang = Math.random() < 0.5 ? 'vi' : 'en';
       const cat = RANDOM_CATS[lang][Math.floor(Math.random() * RANDOM_CATS[lang].length)];
       const L = LETTERS[lang];
@@ -133,17 +133,24 @@ export function startWikipedia(db, ingest, log, readConfig, ai) {
     log('wikipedia', name, `+${r.added}/${r.parsed}`);
   };
 
+  let running = false;
   async function run() {
-    if (readConfig().wikipedia?.enabled === false) return;
+    const cfg=readConfig().wikipedia || {};
+    if (cfg.enabled === false) return {skipped:'disabled'};
+    if(running)throw Error('Wikipedia collection already running.');
+    running=true;
+    try {
     db.prepare("insert into meta(k, v) values ('wikipedia_last', ?) on conflict(k) do update set v = excluded.v").run(String(Date.now()));
     // Shown pages may come back after a while: related ones when an interest returns,
     // random ones once the (small, for Vietnamese) quality pools would otherwise run dry.
-    db.prepare("delete from wiki_seen where (kind = 'related' and shown_at < ?) or (kind = 'random' and shown_at < ?)").run(Date.now() - FORGET.related, Date.now() - FORGET.random);
-    feed('for you', await related());
-    feed('random', await random());
+    db.prepare("delete from wiki_seen where (kind = 'related' and shown_at < ?) or (kind = 'random' and shown_at < ?)").run(Date.now() - Number(cfg.relatedRepeatDays ?? 60)*864e5, Date.now() - Number(cfg.randomRepeatDays ?? 365)*864e5);
+    if(Number(cfg.relatedPerRun ?? 3)>0)feed('for you', await related());
+    if(Number(cfg.randomPerRun ?? 1)>0)feed('random', await random());
+    return {done:true};
+    } finally {running=false;}
   }
 
-  const due = () => Date.now() - Number(db.prepare("select v from meta where k = 'wikipedia_last'").get()?.v || 0) >= RUN_EVERY;
+  const due = () => Date.now() - Number(db.prepare("select v from meta where k = 'wikipedia_last'").get()?.v || 0) >= Number(readConfig().wikipedia?.intervalHours ?? 4)*3600e3;
   const tick = () => { if (due()) run().catch(e => log('wikipedia', e.message)); };
   setTimeout(tick, 60_000).unref?.();
   setInterval(tick, 15 * 60_000).unref?.();

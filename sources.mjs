@@ -156,7 +156,7 @@ export function startPoller(db, ingest, log, readConfig) {
   }
 
   async function tick() {
-    if (running) return;
+    if (running || readConfig().sources?.pollingEnabled === false) return;
     running = true;
     try {
       const list = due.all(Date.now());

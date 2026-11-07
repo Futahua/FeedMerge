@@ -23,7 +23,7 @@ test('taxonomy tools preview without writes, require explicit apply, and carry r
   try {
     await client.connect(transport);
     const names=(await client.listTools()).tools.map(t=>t.name);
-    for(const name of ['inspect_source','test_source_rules','configure_source_extraction','request_source_capture'])assert(names.includes(name));
+    for(const name of ['inspect_source','test_source_rules','configure_source_extraction','request_source_capture','get_control_catalog','configure_backend','request_backend_job'])assert(names.includes(name));
     await client.callTool({name:'inspect_source',arguments:{source_id:1}});assert.equal(writes.length,0);
     await client.callTool({name:'test_source_rules',arguments:{source_id:1,rules:{minTitleLength:5},html:'<a href="/news/one">Story</a>'}});
     assert.equal(writes[0].html,'<a href="/news/one">Story</a>');writes.length=0;
@@ -32,6 +32,8 @@ test('taxonomy tools preview without writes, require explicit apply, and carry r
     await client.callTool({name:'request_source_capture',arguments:{source_id:1,preview_id:'11111111-1111-4111-8111-111111111111'}});
     assert.equal(writes[0].expected_action,'capture');writes.length=0;
 
+    await client.callTool({name:'configure_backend',arguments:{changes:{'ai.batchSize':5}}});assert.equal(writes[0].operation,'backend_settings');writes.length=0;
+    await client.callTool({name:'request_backend_job',arguments:{action:'expire'}});assert.equal(writes[0].operation,'backend_job');assert.equal(writes[0].input.action,'expire');writes.length=0;
     await client.callTool({ name: 'propose_label', arguments: { layer: 'topic', name: 'New topic' } });
     await client.callTool({ name: 'rename_story', arguments: { label_id: 1, name: 'Updated story' } });
     assert.equal(writes.length, 0);
