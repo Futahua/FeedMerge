@@ -89,6 +89,7 @@
     const fallback = ratio.split('/').reduce((a, b) => Number(a) / Number(b));
     if (ms.length === 1) return `<div class="car" ${frame(ms[0], fallback)}><div class="track">${one(ms[0], 'slide')}</div></div>`;
     return `<div class="car" ${frame(ms[0], fallback)}><div class="track" data-track>${ms.map(m => `<div class="slide">${one(m)}</div>`).join('')}</div>
+      <button type="button" class="car-arrow car-prev" data-gallery-step="-1" aria-label="Previous image" disabled>‹</button><button type="button" class="car-arrow car-next" data-gallery-step="1" aria-label="Next image">›</button>
       <span class="count" data-count>1/${ms.length}</span><div class="dots">${ms.map((_, i) => `<i class="${i ? '' : 'on'}"></i>`).join('')}</div></div>`;
   }
 
@@ -318,6 +319,8 @@
         const car = t.closest('.car');
         car.querySelector('[data-count]').textContent = `${i + 1}/${t.children.length}`;
         car.querySelectorAll('.dots i').forEach((d, k) => d.classList.toggle('on', k === i));
+        car.querySelector('[data-gallery-step="-1"]').disabled = i === 0;
+        car.querySelector('[data-gallery-step="1"]').disabled = i === t.children.length - 1;
       }, { passive: true });
     });
   }
@@ -329,6 +332,15 @@
 
   function handleClick(e, it, card) {
     const t = e.target;
+    const arrow = t.closest('[data-gallery-step]');
+    if (arrow) {
+      const track = arrow.closest('.car').querySelector('[data-track]');
+      if (track?.clientWidth) {
+        const index = Math.max(0, Math.min(track.children.length - 1, Math.round(track.scrollLeft / track.clientWidth) + Number(arrow.dataset.galleryStep)));
+        track.scrollTo({ left: index * track.clientWidth, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+      }
+      return true;
+    }
     if (t.closest('[data-unembed]')) { card.querySelector('.embed')?.remove(); card.querySelector('.n-body').hidden = false; return true; }
     if (t.closest('[data-unmute]')) {
       const v = t.closest('.vwrap, .vt').querySelector('video');

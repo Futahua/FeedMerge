@@ -177,3 +177,11 @@
 .fm-strip .meta { margin-left: auto; display: flex; gap: 10px; align-items: center; white-space: nowrap; }
 .fm-strip .meta a { color: var(--c-link); }
 .fm-strip .star { font-size: 15px; }
+
+/* Desktop gallery controls; touch devices keep their native swipe gesture. */
+.car .car-arrow { position: absolute; z-index: 3; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; padding: 0; border: 1px solid rgb(255 255 255 / .4); border-radius: 50%; background: rgb(0 0 0 / .7); color: #fff; font: 28px/28px sans-serif; cursor: pointer; }
+.car .car-prev { left: 8px; }
+.car .car-next { right: 8px; }
+.car .car-arrow:disabled { visibility: hidden; }
+.car .car-arrow:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+@media (pointer: coarse) { .car .car-arrow { display: none; } }

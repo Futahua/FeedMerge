@@ -44,3 +44,15 @@ test('social cards do not offer noninteractive official embeds',()=>{
   }
   assert(render({platform:'youtube',nativeId:'fixture',media:[],metrics:{},flags:{}},'').includes('data-play'));
 });
+
+test('Reddit galleries have desktop arrows that navigate exactly one image',()=>{
+  const item={platform:'reddit',media:[{url:'https://i.redd.it/a.png',type:'image'},{url:'https://i.redd.it/b.png',type:'image'}],metrics:{},flags:{}};
+  const html=render(item,'');assert(html.includes('aria-label="Next image"'));assert(html.includes('aria-label="Previous image" disabled'));
+  let destination;
+  const track={clientWidth:300,scrollLeft:0,children:[{},{}],scrollTo(opts){destination=opts.left}};
+  const arrow={dataset:{galleryStep:'1'},closest:()=>({querySelector:()=>track})};
+  const target={closest:selector=>selector==='[data-gallery-step]'?arrow:null};
+  assert.equal(context.window.Native.handleClick({target},item,{}),true);assert.equal(destination,300);
+  track.scrollLeft=300;arrow.dataset.galleryStep='-1';context.window.Native.handleClick({target},item,{});assert.equal(destination,0);
+  item.media.pop();assert(!render(item,'').includes('data-gallery-step'));
+});
