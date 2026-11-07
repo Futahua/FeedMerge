@@ -4,6 +4,7 @@ const NAMES = { web: 'Web', x: 'X', youtube: 'YouTube', tiktok: 'TikTok', instag
 const POST = (url, body) => fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', 'x-feedmerge': '1' }, body: JSON.stringify(body || {}) });
 
 const state = { platforms: new Set(), context: '', labels: new Map(), q: '', sort: 'captured', saved: false, ads: false, review: false, offset: 0, done: false, loading: false, newest: 0 };
+let shuffleSeed = 1 + Math.floor(Math.random() * 1000000000);
 const items = new Map();
 let cats = { layers: [], review: 0 };
 try { const s = JSON.parse(localStorage.getItem('fm-view') || '{}'); if (s.sort) state.sort = s.sort; if (s.platforms) state.platforms = new Set(s.platforms); } catch {}
@@ -31,6 +32,7 @@ function params(extra = {}) {
   if (state.saved) p.set('saved', '1');
   if (state.ads) p.set('ads', '1');
   if (state.review) p.set('review', '1');
+  if (state.sort === 'shuffle') p.set('seed', shuffleSeed);
   p.set('sort', state.sort === 'balanced' ? 'captured' : state.sort);
   for (const [k, v] of Object.entries(extra)) p.set(k, v);
   return p;
@@ -212,6 +214,12 @@ function setSide(open, fromHistory) {
   if (open && !fromHistory) history.pushState({ fmSide: 1 }, '');
   else if (!open && !fromHistory && history.state?.fmSide) history.back();
 }
+$('#shuffle').addEventListener('click', () => {
+  if (state.loading) return;
+  shuffleSeed = 1 + Math.floor(Math.random() * 1000000000);
+  state.sort = 'shuffle'; $('#sort').value = 'shuffle';
+  window.scrollTo(0, 0); refresh();
+});
 $('#menu').addEventListener('click', () => setSide(!sideOpen()));
 $('#sideClose').addEventListener('click', () => setSide(false));
 $('#scrim').addEventListener('click', () => setSide(false));

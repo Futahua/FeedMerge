@@ -168,7 +168,8 @@ function listItems(p) {
   if (p.get('ads') !== '1') where.push("coalesce(json_extract(flags, '$.ad'), 0) = 0");
   if (p.get('q')) { where.push('rowid in (select rowid from items_fts where items_fts match ?)'); args.push(ftsQuery(p.get('q'))); }
   if (p.get('since')) { where.push('first_seen > ?'); args.push(Number(p.get('since'))); }
-  const order = p.get('sort') === 'published' ? 'coalesce(published_at, first_seen) desc, rowid' : p.get('sort') === 'repeated' ? 'seen_count desc, first_seen desc' : 'first_seen desc, rowid';
+  const seed = Math.max(1, Math.min(1000000000, Math.floor(Number(p.get('seed'))) || 1));
+  const order = p.get('sort') === 'shuffle' ? `((rowid * ${seed} % 2147483647) * 48271 % 2147483647), rowid` : p.get('sort') === 'published' ? 'coalesce(published_at, first_seen) desc, rowid' : p.get('sort') === 'repeated' ? 'seen_count desc, first_seen desc' : 'first_seen desc, rowid';
   const limit = Math.min(200, Number(p.get('limit')) || 50);
   const offset = Math.max(0, Number(p.get('offset')) || 0);
   const sql = `select * from items ${where.length ? 'where ' + where.join(' and ') : ''} order by ${order} limit ${limit} offset ${offset}`;

@@ -9,6 +9,7 @@
 </head>
 <body>
 <button id="menu" class="icon fab" aria-label="Filters and sources" aria-controls="side" aria-expanded="true">☰</button>
+<button id="shuffle" class="icon fab" aria-label="Shuffle feed" title="Shuffle feed">⤨</button>
 <div id="scrim" hidden></div>
 
 <dialog id="sourcesDlg">
@@ -45,6 +46,7 @@
       <div class="side-head"><div class="brand">FeedMerge</div><button id="sideClose" class="icon2" aria-label="Close sidebar">✕</button></div>
       <input id="q" type="search" placeholder="Search everything you've scrolled past" autocomplete="off">
       <select id="sort" title="Order">
+        <option value="shuffle">Shuffled</option>
         <option value="captured">Newest captured</option>
         <option value="balanced">Balanced across platforms</option>
         <option value="published">Newest posted</option>

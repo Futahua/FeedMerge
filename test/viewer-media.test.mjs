@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import fs from 'node:fs';
-const context=vm.createContext({window:{addEventListener(){}},IntersectionObserver:class{observe(){}},matchMedia:()=>({matches:true})});
+const context=vm.createContext({URL,window:{addEventListener(){}},IntersectionObserver:class{observe(){}},matchMedia:()=>({matches:true})});
 vm.runInContext(fs.readFileSync(new URL('../viewer/native.js',import.meta.url),'utf8'),context);
 const {frameAspect,render}=context.window.Native;
 test('media frames preserve readable wide strips and bound ordinary preview cropping',()=>{
@@ -29,4 +29,18 @@ test('automatic widening stays within 640 pixels and respects single-column zoom
     assert(el.offsetWidth<=Math.max(640,base));
     if(base===700)assert.equal(style.gridColumnEnd,'span 1');
   }
+});
+
+test('Reddit gallery counts assets once and prefers originals over blurred previews',()=>{
+  const media=[{type:'image',url:'https://preview.redd.it/abc123.png?blur=32'},{type:'image',url:'https://preview.redd.it/post-title-v0-abc123.png?width=640'},{type:'image',url:'https://i.redd.it/abc123.png'},{type:'image',url:'https://preview.redd.it/post-v0-def456.jpeg?width=640'},{type:'image',url:'https://i.redd.it/def456.jpeg'}];
+  const result=context.window.Native.redditMedia(media);
+  assert.equal(result.length,2);assert.equal(result[0].url,'https://i.redd.it/abc123.png');assert.equal(result[1].url,'https://i.redd.it/def456.jpeg');
+  assert.equal(media.length,5);
+});
+test('social cards do not offer noninteractive official embeds',()=>{
+  for(const platform of ['x','instagram','threads','bluesky','reddit']){
+    const html=render({id:'fixture',nativeId:'fixture',platform,author:'author',authorName:'author',text:'Text',media:[],metrics:{},flags:{}},'');
+    assert(!html.includes('data-embed'),platform);
+  }
+  assert(render({platform:'youtube',nativeId:'fixture',media:[],metrics:{},flags:{}},'').includes('data-play'));
 });

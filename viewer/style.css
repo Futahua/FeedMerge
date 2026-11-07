@@ -177,3 +177,5 @@ aside.open { transform: none; visibility: visible; }
   #feed .rd-acts .pill-share span, #feed .rd-acts .pill-share b { display: none; }
 }
 #feed .rd-acts .embed-btn { position: absolute; top: 10px; right: 10px; z-index: 2; }
+
+#shuffle.icon.fab { left: 56px; }

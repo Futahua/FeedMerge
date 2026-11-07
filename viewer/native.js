@@ -139,7 +139,26 @@
       </div></div>`;
   };
 
+  // Reddit captures include blurred thumbnails, named previews and originals of
+  // the same asset. Keep its first position, prefer the unblurred original.
+  function redditMedia(media) {
+    const unique = new Map();
+    for (const m of media) {
+      let key = m.url, rank = 0;
+      try {
+        const u = new URL(m.url);
+        if (/^(?:i|preview)\.redd\.it$/.test(u.hostname)) {
+          key = u.pathname.split('/').pop().replace(/^.*-v\d+-/, '').replace(/\.[^.]+$/, '');
+          rank = u.hostname === 'i.redd.it' ? 3 : u.searchParams.has('blur') ? 0 : 2;
+        }
+      } catch {}
+      if (!unique.has(key) || rank > unique.get(key).rank) unique.set(key, { media: m, rank });
+    }
+    return [...unique.values()].map(x => x.media);
+  }
+
   R.reddit = it => {
+    it = { ...it, media: redditMedia(it.media) };
     const m = it.metrics, f = it.flags;
     const sub = it.authorName || '';
     return `<div class="rd-head">${avatar({ flags: f, authorName: sub.replace(/^r\//, '') }, 24)}<b>${esc(sub)}</b><span class="mute">• ${ago(it.publishedAt)}</span><span class="grow"></span>${f.ad ? '<span class="mute">Promoted</span>' : ''}</div>
@@ -211,26 +230,11 @@
     switch (it.platform) {
       case 'youtube': return { src: `https://www.youtube-nocookie.com/embed/${it.nativeId}?autoplay=1&rel=0&playsinline=1`, ratio: it.flags.short || it.context === 'shorts' ? '9 / 16' : '16 / 9' };
       case 'tiktok': return { src: `https://www.tiktok.com/player/v1/${it.nativeId}?autoplay=1&description=1&music_info=1&rel=0&native_context_menu=0`, ratio: '9 / 16' };
-      case 'instagram': return { src: `https://www.instagram.com/${it.flags.reel ? 'reel' : 'p'}/${it.nativeId}/embed/captioned/`, height: 720 };
-      case 'threads': return { src: `https://www.threads.com/@${it.author}/post/${it.nativeId}/embed`, height: 620 };
-      case 'bluesky': return { src: `https://embed.bsky.app/embed/${it.nativeId}?colorMode=${t === 'dark' ? 'dark' : 'light'}`, height: 420 };
-      case 'reddit': { try { return { src: `https://embed.reddit.com${new URL(it.url).pathname}?embed=true&theme=${t}&showmedia=true`, height: 620 }; } catch { return null; } }
-      case 'x': return { x: true };
     }
     return null;
   }
-  const PLAY_LABEL = { youtube: 'Play', tiktok: 'Play', instagram: 'View on Instagram here', threads: 'View thread here', bluesky: 'View on Bluesky here', reddit: 'View on Reddit here', x: 'View on X here' };
+  const PLAY_LABEL = { youtube: 'Play', tiktok: 'Play' };
   function embedBtn(it) { return embedUrl(it) ? `<button class="embed-btn" data-embed>${esc(PLAY_LABEL[it.platform] || 'Embed')}</button>` : ''; }
-
-  let xLoading = null;
-  const loadX = () => xLoading || (xLoading = new Promise(res => {
-    const s = document.createElement('script');
-    s.src = 'https://platform.twitter.com/widgets.js';
-    s.async = true;
-    s.onload = () => res(window.twttr);
-    s.onerror = () => res(null);
-    document.head.appendChild(s);
-  }));
 
   async function openEmbed(card, it) {
     const e = embedUrl(it);
@@ -242,14 +246,6 @@
     const body = card.querySelector('.n-body');
     body.hidden = true;
     body.after(box);
-    if (e.x) {
-      const tw = await loadX();
-      const holder = document.createElement('div');
-      box.appendChild(holder);
-      if (tw?.widgets) await tw.widgets.createTweet(it.nativeId, holder, { theme: theme(), dnt: true, align: 'center' });
-      if (!holder.childElementCount) holder.innerHTML = `<p class="mute">X's embed didn't load. <a href="${esc(it.url)}" target="_blank" rel="noopener noreferrer">Open on X</a></p>`;
-      return;
-    }
     const f = document.createElement('iframe');
     f.src = e.src;
     f.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen; clipboard-write';
@@ -344,5 +340,5 @@
     return false;
   }
 
-  window.Native = { render, mount, handleClick, ago, short, esc, frameAspect };
+  window.Native = { render, mount, handleClick, ago, short, esc, frameAspect, redditMedia };
 })();

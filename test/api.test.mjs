@@ -35,6 +35,14 @@ test('actual isolated API enforces rename preconditions, agent provenance and ma
     assert.equal((await api('/api/agent/undo',{receipt_id:r.receipt_id,apply:true})).status,200);
     assert.equal((await api(`/api/items/${encodeURIComponent(post.id)}`)).value.saved,false);
     assert.equal((await api('/api/ingestion-status')).status,200);
+    await api('/ingest', {platform:'web',kind:'links',url:'https://example.test',payload:Array.from({length:12},(_,i)=>({url:`https://example.test/shuffle-${i}`,title:`Shuffle fixture article number ${i} with enough text`}))});
+    const ids=async(seed,offset=0,limit=200)=>(await api(`/api/items?ads=1&sort=shuffle&seed=${seed}&offset=${offset}&limit=${limit}`)).value.map(x=>x.id);
+    const shuffled=await ids(1234567);
+    assert(shuffled.length>10);
+    assert.deepEqual(await ids(1234567),shuffled);
+    assert.deepEqual([...(await ids(1234567,0,5)),...(await ids(1234567,5,200))],shuffled);
+    assert.notDeepEqual(await ids(7654321),shuffled);
+
   } finally {
     child.kill(); await new Promise(resolve=>child.exitCode!==null?resolve():child.once('exit',resolve));
     await rm(dir,{recursive:true,force:true});
