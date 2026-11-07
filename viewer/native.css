@@ -177,7 +177,7 @@
 .embed-bar { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; font-size: 12px; color: var(--c-muted); border-bottom: 1px solid var(--c-line); }
 .embed-bar button { border: 0; background: var(--c-hover); color: var(--c-fg); border-radius: 999px; padding: 3px 10px; cursor: pointer; font: inherit; }
 .embed iframe { display: block; width: 100%; border: 0; background: transparent; }
-.embed iframe.tall { max-height: 720px; width: auto; height: 720px; margin: 0 auto; aspect-ratio: 9 / 16; }
+.embed iframe.tall { width: 100%; max-width: 405px; height: auto; max-height: 720px; margin: 0 auto; aspect-ratio: 9 / 16; }
 .embed > div:not(.embed-bar) { display: flex; justify-content: center; padding: 4px 8px 8px; }
 
 /* ---------- FeedMerge strip under each card: category chips + meta ---------- */
