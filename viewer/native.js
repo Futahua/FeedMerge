@@ -185,11 +185,14 @@
       <div class="ig-foot">${embedBtn(it)}</div>`;
   };
 
+  // General pages, kept minimal: the site's icon and whichever is shorter, its name or its
+  // address, then the title (and summary/picture if any).
   R.web = it => {
     const h = host(it.url);
     const m = it.media[0];
-    return `<div class="web-head"><img class="fav" src="https://www.google.com/s2/favicons?domain=${encodeURIComponent(h)}&sz=32" alt="" referrerpolicy="no-referrer"><b>${esc(it.context || h)}</b><span class="mute">· ${ago(it.publishedAt || it.firstSeen)}</span></div>
-      <a class="web-main" href="${esc(it.url)}" target="_blank" rel="noopener noreferrer"><div><div class="web-title">${esc(it.title || '')}</div>${it.text ? `<div class="web-text clamp3">${esc(it.text)}</div>` : ''}<div class="mute">${esc(h)}${it.author && it.author !== it.context ? ' · ' + esc(it.author) : ''}</div></div>${m ? img(m, 'web-img') : ''}</a>`;
+    const name = it.context && it.context.length < h.length ? it.context : h;
+    return `<div class="web-head"><img class="fav" src="https://www.google.com/s2/favicons?domain=${encodeURIComponent(h)}&sz=32" alt="" referrerpolicy="no-referrer"><b title="${esc(it.context || h)}">${esc(name)}</b><span class="mute">· ${ago(it.publishedAt || it.firstSeen)}</span></div>
+      <a class="web-main" href="${esc(it.url)}" target="_blank" rel="noopener noreferrer"><div><div class="web-title">${esc(it.title || '')}</div>${it.text ? `<div class="web-text clamp3">${esc(it.text)}</div>` : ''}</div>${m ? img(m, 'web-img') : ''}</a>`;
   };
 
   // ---------- Official embeds ----------

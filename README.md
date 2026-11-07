@@ -67,8 +67,11 @@ by `tailscale serve --bg --https=8447 http://127.0.0.1:4747`. The server only an
 `x-feedmerge` header. Turn it off with `tailscale serve --https=8447 off`.
 
 The viewer has no top bar: name, search, order, Categories, Sources and every filter live in a sidebar drawer
-on every screen. ☰ opens it; ✕, a tap outside, Escape or Back close it. Posts sit in a grid; on a PC,
-Ctrl+scroll zooms it (bigger cards and fewer columns, or smaller and more), remembered per browser.
+on every screen. ☰ opens it; ✕, a tap outside, Escape or Back close it. Posts sit in a packed grid that follows Flow's smart box rule: a card takes the shape
+of what it shows (wide media spans 2–3 columns, tall video and text stay one), media is never taller than 70% of
+the window, and tiles pack densely so gaps fill across and down. On a PC, Ctrl+scroll zooms the grid; cards
+animate to their new size and place. General web pages show only the site icon, the shorter of the site's name
+or address, and the title.
 
 ## Staying current (retention)
 

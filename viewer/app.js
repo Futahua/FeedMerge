@@ -48,11 +48,11 @@ function balance(list) {
 
 // ---------- The FeedMerge strip under each native card ----------
 function strip(it) {
-  const labs = it.labels.map(l => `<span class="lab lay-${esc(l.layer)} ${l.decided === 1 ? 'yes' : ''}" data-lab="${l.id}" title="${esc(l.layer)} · ${l.decided === 1 ? 'confirmed by you' : `${esc(l.source)} · ${Math.round(l.prob * 100)}%`}">
-      <button class="nm" data-filter="${l.id}" data-name="${esc(l.name)}" data-layer="${esc(l.layer)}">${l.source === 'agent' && l.decided !== 1 ? '<span title="Suggested by an assistant">✦ </span>' : ''}${esc(l.name)}${l.decided !== 1 && l.source !== 'rule' ? `<small>${Math.round(l.prob * 100)}%</small>` : ''}</button>
+  const labs = it.labels.map(l => `<span class="lab lay-${esc(l.layer)} ${l.decided === 1 ? 'yes' : ''}" data-lab="${l.id}" title="${esc(l.layer)} · ${l.decided === 1 ? 'confirmed by you' : esc(l.source)}">
+      <button class="nm" data-filter="${l.id}" data-name="${esc(l.name)}" data-layer="${esc(l.layer)}">${l.source === 'agent' && l.decided !== 1 ? '<span title="Suggested by an assistant">✦ </span>' : ''}${esc(l.name)}</button>
       <button class="ok" data-decide="1" title="Correct">✓</button><button class="no" data-decide="-1" title="Wrong">✕</button></span>`).join('');
   return `<div class="fm-strip">${labs}<button class="add-lab" data-add title="Add a label">+</button>
-    <span class="meta">${lastVisit && it.firstSeen > lastVisit ? '<span class="new-badge" title="Arrived since your last visit">New</span>' : ''}<span title="${esc(NAMES[it.platform])} · ${esc(it.context || '')}">${esc(NAMES[it.platform] || it.platform)} · ${esc(it.context || '')}</span>
+    <span class="meta">${lastVisit && it.firstSeen > lastVisit ? '<span class="new-badge" title="Arrived since your last visit">New</span>' : ''}${it.platform === 'web' ? '' : `<span title="${esc(NAMES[it.platform])} · ${esc(it.context || '')}">${esc(NAMES[it.platform] || it.platform)} · ${esc(it.context || '')}</span>`}
     ${it.seenCount > 1 ? `<span title="times the platform showed this to you">shown ${it.seenCount}×</span>` : ''}
     <a href="${esc(it.url)}" target="_blank" rel="noopener noreferrer">Open</a>
     <button class="star ${it.saved ? 'on' : ''}" data-save title="Save">${it.saved ? '★' : '☆'}</button></span></div>`;
@@ -77,13 +77,16 @@ async function load(reset) {
     const tmp = document.createElement('div');
     tmp.innerHTML = list.map(renderCard).join('');
     window.Native.mount(tmp);
-    $('#feed').append(...tmp.children);
+    const added = [...tmp.children];
+    $('#feed').append(...added);
+    prepareCards(added);
     if (reset && lastVisit && state.offset === list.length) {
       const fresh = await (await fetch('/api/items?' + params({ limit: 500, since: lastVisit }))).json().catch(() => []);
       const note = document.createElement('div');
       note.className = 'since-visit';
       note.textContent = fresh.length ? `${fresh.length >= 500 ? '500+' : fresh.length} new since your last visit` : 'Nothing new since your last visit';
       $('#feed').prepend(note);
+      prepareCards([note]);
     }
     if (reset && !list.length) $('#feed').innerHTML = `<div class="empty">Nothing matches. Clear a filter, or let the extension and your sources bring in more posts.</div>`;
     $('#more').textContent = state.done ? (state.offset ? 'That’s everything.' : '') : '';
@@ -215,34 +218,97 @@ addEventListener('keydown', e => { if (e.key === 'Escape' && sideOpen()) setSide
 for (const id of ['#catsBtn', '#sourcesBtn']) $(id).addEventListener('click', () => setSide(false));
 $('#menu').setAttribute('aria-expanded', 'false');
 
-// Grid zoom: Ctrl+scroll makes cards bigger (fewer columns) or smaller (more), like zooming a
-// photo grid; the page itself is not zoomed. Remembered per browser.
+// ---------- Smart grid (Flow's smart box rule) ----------
+// A card takes the proportions of what it shows: wide media spans more columns, tall
+// video and text stay one column, media is never taller than most of the screen
+// (CSS caps it). Rows are measured in 4 px steps and the grid packs densely, so gaps
+// fill across and down. Ctrl+scroll changes the column width; every visible card
+// animates from where it was to where it lands.
+const feedEl = $('#feed'), GAP = 14, ROW = 4;
+const colsNow = () => getComputedStyle(feedEl).gridTemplateColumns.split(' ').filter(Boolean).length;
+function aspectOf(it, card) {
+  const m = it?.media?.[0];
+  if (m?.w && m?.h) return m.w / m.h;
+  const media = card.querySelector('.n-body video, .n-body img:not(.av):not(.fav)');
+  if (media?.videoWidth) return media.videoWidth / media.videoHeight;
+  if (media?.naturalWidth) return media.naturalWidth / media.naturalHeight;
+  if (it?.platform === 'tiktok') return 9 / 16;
+  if (it?.platform === 'youtube') return 16 / 9;
+  return null;
+}
+function spanFor(card, cols) {
+  const it = items.get(card.dataset.id);
+  if (!it?.media?.length || cols < 3) return 1;
+  const a = aspectOf(it, card);
+  if (!a || a < 1.4) return 1;
+  return a >= 2.1 && cols >= 4 ? 3 : 2;
+}
+function fitRows(el) {
+  // Layout height: ignores the zoom animation's scale, which would give a wrong span.
+  const h = el.offsetHeight;
+  if (h) el.style.gridRowEnd = `span ${Math.ceil((h + GAP) / ROW)}`;
+}
+const rowWatch = new ResizeObserver(entries => { for (const e of entries) fitRows(e.target); });
+function layoutCards(cards = feedEl.children) {
+  const cols = colsNow();
+  for (const el of cards) {
+    if (el.classList.contains('card')) el.style.gridColumnEnd = `span ${spanFor(el, cols)}`;
+  }
+  for (const el of cards) fitRows(el);
+}
+function prepareCards(cards) {
+  for (const el of cards) {
+    rowWatch.observe(el);
+    // Media without recorded size: decide the span once it has loaded.
+    el.addEventListener('load', () => layoutCards([el]), true);
+    el.addEventListener('loadedmetadata', () => layoutCards([el]), true);
+  }
+  layoutCards(cards);
+}
+let lastCols = 0;
+addEventListener('resize', () => { const c = colsNow(); if (c !== lastCols) { lastCols = c; layoutCards(); } });
+
 const CARD_MIN = 240, CARD_MAX = 1000;
 let cardW = 440;
 try { cardW = Math.min(CARD_MAX, Math.max(CARD_MIN, Number(localStorage.getItem('fm-card-w')) || 440)); } catch {}
+document.documentElement.style.setProperty('--card-w', cardW + 'px');
 const hint = Object.assign(document.createElement('div'), { className: 'zoom-hint' });
 document.body.append(hint);
-let hintTimer = 0;
-function applyZoom(show) {
+let hintTimer = 0, zoomFrame = 0, zoomAnchor = null;
+function zoomNow() {
+  zoomFrame = 0;
+  const vh = innerHeight;
+  const visible = [...feedEl.children].filter(el => { const r = el.getBoundingClientRect(); return r.bottom > -200 && r.top < vh + 200; });
+  const before = new Map(visible.map(el => [el, el.getBoundingClientRect()]));
+  const anchorTop = zoomAnchor?.isConnected ? zoomAnchor.getBoundingClientRect().top : null;
+  const colsBefore = colsNow();
   document.documentElement.style.setProperty('--card-w', cardW + 'px');
-  if (!show) return;
-  const cols = getComputedStyle($('#feed')).gridTemplateColumns.split(' ').length;
+  const cols = colsNow();
+  if (cols !== colsBefore) layoutCards();
+  lastCols = cols;
+  if (anchorTop !== null) scrollBy(0, zoomAnchor.getBoundingClientRect().top - anchorTop);
+  for (const el of visible) {
+    const a = before.get(el), b = el.getBoundingClientRect();
+    if (!b.width || !b.height) continue;
+    const dx = a.left - b.left, dy = a.top - b.top, sx = a.width / b.width, sy = a.height / b.height;
+    if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(sx - 1) < 0.01 && Math.abs(sy - 1) < 0.01) continue;
+    el.animate([
+      { transformOrigin: '0 0', transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})` },
+      { transformOrigin: '0 0', transform: 'none' },
+    ], { duration: 260, easing: 'cubic-bezier(.2, .8, .2, 1)' });
+  }
   hint.textContent = `${cols} column${cols === 1 ? '' : 's'}`;
   hint.classList.add('on');
   clearTimeout(hintTimer);
   hintTimer = setTimeout(() => hint.classList.remove('on'), 900);
+  try { localStorage.setItem('fm-card-w', String(cardW)); } catch {}
 }
-applyZoom(false);
 addEventListener('wheel', e => {
   if (!e.ctrlKey || sideOpen()) return;
   e.preventDefault();
-  const anchor = document.elementFromPoint(e.clientX, e.clientY)?.closest('.card');
-  const before = anchor?.getBoundingClientRect().top;
+  zoomAnchor = document.elementFromPoint(e.clientX, e.clientY)?.closest('#feed > *') || zoomAnchor;
   cardW = Math.round(Math.min(CARD_MAX, Math.max(CARD_MIN, cardW * Math.exp(-e.deltaY * 0.0015))));
-  applyZoom(true);
-  // Keep the card under the pointer in place while the grid reflows.
-  if (anchor && before !== undefined) scrollBy(0, anchor.getBoundingClientRect().top - before);
-  try { localStorage.setItem('fm-card-w', String(cardW)); } catch {}
+  if (!zoomFrame) zoomFrame = requestAnimationFrame(zoomNow);
 }, { passive: false });
 $('#fresh').addEventListener('click', () => { window.scrollTo(0, 0); refresh(); });
 document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => { b.closest('dialog').close(); refresh(); }));
