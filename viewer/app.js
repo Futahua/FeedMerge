@@ -196,7 +196,33 @@ $('#sort').addEventListener('change', e => { state.sort = e.target.value; rememb
 $('#saved').addEventListener('change', e => { state.saved = e.target.checked; load(true); });
 $('#ads').addEventListener('change', e => { state.ads = e.target.checked; load(true); });
 $('#review').addEventListener('change', e => { state.review = e.target.checked; renderActive(); load(true); });
-$('#menu').addEventListener('click', () => $('#side').classList.toggle('open'));
+// Sidebar: on wide screens ☰ collapses/expands the column (remembered); on phones it opens a
+// drawer that closes with ✕, a tap outside, Escape or the Back button.
+const phone = matchMedia('(max-width: 900px)');
+try { if (localStorage.getItem('fm-side') === '0') document.body.classList.add('side-off'); } catch {}
+const sideOpen = () => phone.matches ? $('#side').classList.contains('open') : !document.body.classList.contains('side-off');
+function setSide(open, fromHistory) {
+  if (phone.matches) {
+    $('#side').classList.toggle('open', open);
+    $('#scrim').hidden = !open;
+    document.body.style.overflow = open ? 'hidden' : '';
+    document.body.classList.toggle('drawer-open', open);
+    if (open && !fromHistory) history.pushState({ fmSide: 1 }, '');
+    else if (!open && !fromHistory && history.state?.fmSide) history.back();
+  } else {
+    document.body.classList.toggle('side-off', !open);
+    try { localStorage.setItem('fm-side', open ? '1' : '0'); } catch {}
+  }
+  $('#menu').setAttribute('aria-expanded', String(open));
+}
+$('#menu').addEventListener('click', () => setSide(!sideOpen()));
+$('#sideClose').addEventListener('click', () => setSide(false));
+$('#scrim').addEventListener('click', () => setSide(false));
+addEventListener('popstate', () => { if (phone.matches && sideOpen()) setSide(false, true); });
+addEventListener('keydown', e => { if (e.key === 'Escape' && phone.matches && sideOpen()) setSide(false); });
+for (const id of ['#catsBtn', '#sourcesBtn']) $(id).addEventListener('click', () => { if (phone.matches) setSide(false); });
+phone.addEventListener('change', () => { $('#side').classList.remove('open'); document.body.classList.remove('drawer-open'); $('#scrim').hidden = true; document.body.style.overflow = ''; $('#menu').setAttribute('aria-expanded', String(sideOpen())); });
+$('#menu').setAttribute('aria-expanded', String(sideOpen()));
 $('#fresh').addEventListener('click', () => { window.scrollTo(0, 0); refresh(); });
 document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => { b.closest('dialog').close(); refresh(); }));
 

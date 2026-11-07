@@ -27,7 +27,9 @@ export function readConfig() {
   try { return JSON.parse(fs.readFileSync(CONFIG, 'utf8')); } catch { return {}; }
 }
 const PORT = Number(process.env.FEEDMERGE_PORT || readConfig().port || 4747);
-const HOSTS = new Set([`127.0.0.1:${PORT}`, `localhost:${PORT}`]);
+// Only these Host headers are served (blocks DNS-rebinding pages). config.json "hosts" adds
+// names that reach FeedMerge through a private proxy, e.g. its Tailscale address.
+const HOSTS = new Set([`127.0.0.1:${PORT}`, `localhost:${PORT}`, ...(readConfig().hosts || [])]);
 
 const LOG = process.env.FEEDMERGE_LOG || path.join(DATA, 'server.log');
 function log(...a) {

@@ -8,19 +8,8 @@
 <link rel="stylesheet" href="native.css">
 </head>
 <body>
-<header>
-  <div class="brand">FeedMerge</div>
-  <input id="q" type="search" placeholder="Search everything you've scrolled past" autocomplete="off">
-  <select id="sort" title="Order">
-    <option value="captured">Newest captured</option>
-    <option value="balanced">Balanced across platforms</option>
-    <option value="published">Newest posted</option>
-    <option value="repeated">Pushed to you most often</option>
-  </select>
-  <button id="catsBtn" class="btn">Categories</button>
-  <button id="sourcesBtn" class="btn">Sources</button>
-  <button id="menu" class="icon" aria-label="Filters">☰</button>
-</header>
+<button id="menu" class="icon fab" aria-label="Filters and sources" aria-controls="side" aria-expanded="true">☰</button>
+<div id="scrim" hidden></div>
 
 <dialog id="sourcesDlg">
   <div class="dlg-head"><h3>Web sources</h3><button class="icon2" data-close aria-label="Close">✕</button></div>
@@ -52,6 +41,17 @@
 
 <div class="layout">
   <aside id="side">
+    <section class="side-top">
+      <div class="side-head"><div class="brand">FeedMerge</div><button id="sideClose" class="icon2" aria-label="Close sidebar">✕</button></div>
+      <input id="q" type="search" placeholder="Search everything you've scrolled past" autocomplete="off">
+      <select id="sort" title="Order">
+        <option value="captured">Newest captured</option>
+        <option value="balanced">Balanced across platforms</option>
+        <option value="published">Newest posted</option>
+        <option value="repeated">Pushed to you most often</option>
+      </select>
+      <div class="side-btns"><button id="catsBtn" class="btn">Categories</button><button id="sourcesBtn" class="btn">Sources</button></div>
+    </section>
     <section><h2>Platforms</h2><div id="platforms" class="chips"></div></section>
     <section><h2>Where it came from</h2><div id="contexts" class="list"></div></section>
     <div id="layerBoxes"></div>

@@ -13,14 +13,13 @@
 body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
 button, input, select { font: inherit; color: inherit; }
 
-header { position: sticky; top: 0; z-index: 5; display: flex; gap: 10px; align-items: center; padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
 .brand { font-weight: 650; letter-spacing: -0.01em; }
 #q { flex: 1; min-width: 0; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
 select { padding: 7px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
-.icon { display: none; border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 6px 10px; cursor: pointer; }
+.icon { display: block; border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 6px 10px; cursor: pointer; }
 
 .layout { display: grid; grid-template-columns: 270px minmax(0, 680px); gap: 24px; justify-content: center; padding: 16px; }
-aside { position: sticky; top: 64px; align-self: start; max-height: calc(100vh - 80px); overflow: auto; }
+aside { position: sticky; top: 16px; align-self: start; max-height: calc(100vh - 32px); overflow: auto; }
 aside section { margin-bottom: 18px; }
 h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 6px; font-weight: 600; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -98,14 +97,40 @@ dialog::backdrop { background: rgb(0 0 0 / 0.45); }
 .src-tag { font-size: 11px; border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; color: var(--muted); }
 .layout { grid-template-columns: 270px minmax(0, 600px); }
 
+/* Sidebar: a left column on wide screens (☰ collapses it), a drawer over the feed on phones. */
+.side-head { display: flex; justify-content: space-between; align-items: center; }
+#sideClose { display: none; }
+.side-top select { width: 100%; margin-bottom: 8px; }
+.side-top #q { display: block; width: 100%; box-sizing: border-box; margin: 10px 0 8px; }
+.side-head { margin-bottom: 2px; }
+/* ☰ floats at the top left: opens the drawer on phones, collapses the column on PC. */
+.icon.fab { position: fixed; top: 12px; left: 12px; z-index: 25; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+.layout { padding-top: 16px; }
+/* PC: while the column is open, its own ✕ collapses it and ☰ is hidden; ☰ brings it back. */
+@media (min-width: 901px) {
+  body:not(.side-off) .icon.fab { display: none; }
+  #sideClose { display: block; }
+}
+.side-btns { display: flex; gap: 8px; }
+.side-btns .btn { flex: 1; }
+body.side-off aside { display: none; }
+body.side-off .layout { grid-template-columns: minmax(0, 680px); }
+#scrim { position: fixed; inset: 0; background: rgba(0, 0, 0, .45); z-index: 15; }
+
 @media (max-width: 900px) {
-  .layout { grid-template-columns: minmax(0, 1fr); padding: 12px 16px; }
-  .icon { display: block; }
-  aside { display: none; position: static; max-height: none; }
-  aside.open { display: block; }
-  header { flex-wrap: wrap; }
-  #q { order: 3; flex-basis: 100%; }
+  .layout, body.side-off .layout { grid-template-columns: minmax(0, 1fr); padding: 12px 16px; }
+  aside, body.side-off aside {
+    display: block; position: fixed; top: 0; left: 0; bottom: 0; z-index: 20;
+    width: min(86vw, 320px); max-height: none; overflow: auto; padding: 16px;
+    background: var(--panel); border-right: 1px solid var(--line);
+    transform: translateX(-105%); transition: transform .2s ease; visibility: hidden;
+  }
+  aside.open, body.side-off aside.open { transform: none; visibility: visible; }
+  #sideClose { display: block; }
+  .layout, body.side-off .layout { padding-top: 60px; }
+}
 }
 
 .new-badge { background: #2f7cf6; color: #fff; border-radius: 4px; padding: 0 5px; font-size: 11px; font-weight: 600; margin-right: 6px; }
 .since-visit { margin: 8px 0 12px; font-size: 13px; opacity: .75; }
+.drawer-open .icon.fab { display: none; }

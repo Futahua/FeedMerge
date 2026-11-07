@@ -59,6 +59,17 @@ Edit `config.json`. It's re-read every cycle, so there's no need to restart.
 
 Batches of 25 posts, one call per 20 s by default. The AI only adds labels; the feed itself never depends on it.
 
+## On your phone
+
+FeedMerge is served inside your tailnet (not the public internet) at `https://sloptop.taild88607.ts.net:8447`
+by `tailscale serve --bg --https=8447 http://127.0.0.1:4747`. The server only answers Host names it knows:
+`config.json` `"hosts": ["sloptop.taild88607.ts.net:8447"]` adds that one. Writes still need the viewer's
+`x-feedmerge` header. Turn it off with `tailscale serve --https=8447 off`.
+
+The viewer has no top bar: name, search, order, Categories, Sources and every filter live in the sidebar. On a
+PC it is the left column (✕ collapses it, ☰ brings it back, remembered); on a phone ☰ opens it as a drawer that
+closes with ✕, a tap outside, Escape or Back.
+
 ## Staying current (retention)
 
 FeedMerge is for keeping up, not for hoarding. Hourly (and 30 s after start) `retention.mjs`:
