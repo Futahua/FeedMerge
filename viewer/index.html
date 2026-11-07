@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FeedMerge</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div class="brand">FeedMerge</div>
+  <input id="q" type="search" placeholder="Search everything you've scrolled past" autocomplete="off">
+  <select id="sort" title="Order">
+    <option value="captured">Newest captured</option>
+    <option value="balanced">Balanced across platforms</option>
+    <option value="published">Newest posted</option>
+    <option value="repeated">Pushed to you most often</option>
+  </select>
+  <button id="sourcesBtn" class="btn">Sources</button>
+  <button id="menu" class="icon" aria-label="Filters">☰</button>
+</header>
+<dialog id="sourcesDlg">
+  <div class="dlg-head"><h3>Web sources</h3><button class="icon2" id="closeSources" aria-label="Close">✕</button></div>
+  <p class="hint">Paste a site address, a feed link, a topic to search the news for, or an RSSHub route (starts with <code>/</code>). Sites without a feed are watched for new headlines.</p>
+  <form id="addSource">
+    <input id="srcInput" placeholder="e.g. theverge.com · RTX 5090 · vnexpress.net · /telegram/channel/durov" autocomplete="off" required>
+    <select id="srcLocale" title="News search language">
+      <option value="en-US">English (US)</option>
+      <option value="en-GB">English (UK)</option>
+      <option value="vi-VN">Tiếng Việt</option>
+    </select>
+    <button class="btn primary" id="srcAdd">Add</button>
+  </form>
+  <div id="srcMsg" class="hint"></div>
+  <div id="srcList"></div>
+</dialog>
+<div class="layout">
+  <aside id="side">
+    <section><h2>Platforms</h2><div id="platforms" class="chips"></div></section>
+    <section><h2>Where it came from</h2><div id="contexts" class="list"></div></section>
+    <section id="storiesBox"><h2>Stories across platforms</h2><div id="stories" class="list"></div></section>
+    <section id="topicsBox"><h2>Topics</h2><div id="topics" class="chips"></div></section>
+    <section>
+      <label class="check"><input type="checkbox" id="saved"> Saved only</label>
+      <label class="check"><input type="checkbox" id="ads"> Show ads</label>
+    </section>
+    <section class="foot" id="status"></section>
+  </aside>
+  <main>
+    <div id="active" class="active"></div>
+    <button id="fresh" class="fresh" hidden></button>
+    <div id="feed"></div>
+    <div id="more" class="more"></div>
+  </main>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

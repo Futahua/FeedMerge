@@ -1,0 +1,11 @@
+{
+  "port": 4747,
+  "ai": {
+    "enabled": false,
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai",
+    "apiKey": "",
+    "model": "gemini-2.5-flash-lite",
+    "batchSize": 25,
+    "intervalSeconds": 20
+  }
+}

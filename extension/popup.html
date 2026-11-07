@@ -1,0 +1,35 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  :root { color-scheme: light dark; --bg: #fff; --fg: #1d1d1f; --muted: #6e6e73; --line: #e5e5ea; --accent: #2f6fed; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #1c1c1e; --fg: #f2f2f7; --muted: #98989f; --line: #38383a; --accent: #6b9bff; } }
+  body { margin: 0; width: 260px; font: 13px/1.4 system-ui, sans-serif; background: var(--bg); color: var(--fg); }
+  .wrap { padding: 12px; }
+  h1 { font-size: 14px; margin: 0 0 8px; display: flex; justify-content: space-between; align-items: center; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; background: #c33; }
+  .dot.on { background: #2a2; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0; }
+  td { padding: 3px 0; border-bottom: 1px solid var(--line); }
+  td.n { text-align: right; color: var(--muted); }
+  .muted { color: var(--muted); }
+  button { width: 100%; margin-top: 6px; padding: 7px; border-radius: 6px; border: 1px solid var(--line); background: transparent; color: var(--fg); cursor: pointer; font: inherit; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>FeedMerge <span id="srv" class="muted"></span></h1>
+  <div id="note" class="muted"></div>
+  <table id="t"></table>
+  <button class="primary" id="open">Open merged feed</button>
+  <button id="pause"></button>
+  <h1 style="margin-top:14px">Background refresh <label><input type="checkbox" id="rfOn"></label></h1>
+  <div class="muted">Loads each feed in a minimized window now and then, so you don't have to open the sites.</div>
+  <table id="rf"></table>
+  <button id="rfNow">Refresh all now</button>
+</div>
+<script src="popup.js"></script>
+</body>
+</html>
