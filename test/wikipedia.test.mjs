@@ -38,4 +38,10 @@ test('related pages from feed subjects and random quality articles, never repeat
   await w.run();
   const again = parseCapture({ ...ingested.find(c => c.pageUrl === 'source:Wikipedia · for you'), text: ingested.find(c => c.pageUrl === 'source:Wikipedia · for you').payload });
   assert.equal(again[0].title, 'Archicad');
+  // Two months on, the first page may be shown again.
+  db.prepare("update wiki_seen set shown_at = shown_at - ? where title = 'Autodesk Revit'").run(61 * 864e5);
+  ingested.length = 0;
+  await w.run();
+  const later = ingested.find(c => c.pageUrl === 'source:Wikipedia · for you');
+  assert.equal(parseCapture({ ...later, text: later.payload })[0].title, 'Autodesk Revit');
 });

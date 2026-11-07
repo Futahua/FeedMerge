@@ -8,12 +8,14 @@
 // retired page/related endpoint.
 // Random: a random member of the quality-reviewed article categories (plain random pages
 // are mostly lists and stubs).
+// A page is not shown again for 60 days (related) or a year (random).
 //
 // Wikipedia's 2026 rate limits give identified clients 200 requests/minute; FeedMerge
 // identifies itself with the contact in config.json (wikipedia.contact). A run uses ~20.
 
 const RUN_EVERY = 4 * 3600e3;
 const PER_RUN = { related: 3, random: 1 };
+const FORGET = { related: 60 * 864e5, random: 365 * 864e5 }; // after this, a shown page may be shown again
 const RANDOM_CATS = { en: ['Featured articles', 'Good articles'], vi: ['Bài viết chọn lọc'] };
 const LETTERS = { en: 'ABCDEFGHIJKLMNOPRSTW', vi: 'ABCDĐGHKLMNPQSTV' };
 
@@ -133,6 +135,9 @@ export function startWikipedia(db, ingest, log, readConfig, ai) {
   async function run() {
     if (readConfig().wikipedia?.enabled === false) return;
     db.prepare("insert into meta(k, v) values ('wikipedia_last', ?) on conflict(k) do update set v = excluded.v").run(String(Date.now()));
+    // Shown pages may come back after a while: related ones when an interest returns,
+    // random ones once the (small, for Vietnamese) quality pools would otherwise run dry.
+    db.prepare("delete from wiki_seen where (kind = 'related' and shown_at < ?) or (kind = 'random' and shown_at < ?)").run(Date.now() - FORGET.related, Date.now() - FORGET.random);
     feed('for you', await related());
     feed('random', await random());
   }
