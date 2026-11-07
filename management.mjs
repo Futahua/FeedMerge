@@ -28,7 +28,7 @@ export function createManagement(db, readConfig = () => ({})) {
     if (!operations.has(operation)) throw fail('Unsupported management operation.');
     if(operation==='backend_settings')return {changes:normalizeControlChanges(input.changes)};
     if(operation==='backend_job') {
-      if(!['reparse','expire','recluster','wikipedia'].includes(input.action))throw fail('Unknown backend job.');
+      if(!['reparse','expire','recluster','wikipedia','apply_exclusions'].includes(input.action))throw fail('Unknown backend job.');
       if(db.prepare("select count(*) n from agent_jobs j left join agent_job_runs r on r.id=j.id where j.kind='maintenance' and (r.id is null or r.status='running')").get().n>=20)throw fail('Maintenance queue is full. Inspect jobs before adding more.');
       return {action:input.action,job_id:input.job_id||randomUUID()};
     }
