@@ -235,3 +235,13 @@
 /* Keep long X text readable without burying its media below a tall card. */
 .p-x .x-text { max-height: min(45vh, var(--x-text-max-height, 320px)); overflow-y: auto; overscroll-behavior-y: contain; scrollbar-width: thin; }
 .p-x .x-text:focus-visible { outline: 2px solid var(--c-link); outline-offset: 2px; }
+
+/* Card-colored inline scrollbars: quiet until the region is used, no arrow buttons. */
+.card.n .fm-scrollable { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+.card.n .fm-scrollable:hover, .card.n .fm-scrollable:focus-within, .card.n .fm-scrollable.is-scrolling { scrollbar-color: var(--c-muted) transparent; scrollbar-color: color-mix(in srgb, var(--c-muted) 55%, transparent) transparent; }
+.card.n .fm-scrollable::-webkit-scrollbar { width: 6px; height: 6px; background: transparent; }
+.card.n .fm-scrollable::-webkit-scrollbar-track, .card.n .fm-scrollable::-webkit-scrollbar-corner { background: transparent; }
+.card.n .fm-scrollable::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+.card.n .fm-scrollable::-webkit-scrollbar-thumb { background: transparent; border-radius: 999px; }
+.card.n .fm-scrollable:hover::-webkit-scrollbar-thumb, .card.n .fm-scrollable:focus-within::-webkit-scrollbar-thumb, .card.n .fm-scrollable.is-scrolling::-webkit-scrollbar-thumb { background: var(--c-muted); background: color-mix(in srgb, var(--c-muted) 55%, transparent); }
+@media (forced-colors: active) { .card.n .fm-scrollable { scrollbar-color: auto; } }

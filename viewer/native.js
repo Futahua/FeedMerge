@@ -368,6 +368,17 @@
   }, { threshold: [0, 0.6] });
 
   function mount(root) {
+    root.querySelectorAll('.p-x .x-text, .fb-text-expanded, .web-article').forEach(el => {
+      el.classList.add('fm-scrollable');
+      if (el.dataset.scrollObserved) return;
+      el.dataset.scrollObserved = '1';
+      let idle;
+      el.addEventListener('scroll', () => {
+        el.classList.add('is-scrolling');
+        clearTimeout(idle);
+        idle = setTimeout(() => el.classList.remove('is-scrolling'), 900);
+      }, { passive: true });
+    });
     root.querySelectorAll('[data-article]:not([data-obs])').forEach(box => { box.dataset.obs = '1'; aio.observe(box.closest('.card') || box.parentElement); });
     root.querySelectorAll('[data-media-frame]:not([data-frame-obs])').forEach(box => {
       box.dataset.frameObs = '1';
