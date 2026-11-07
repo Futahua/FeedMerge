@@ -33,6 +33,7 @@ function params(extra = {}) {
   if (state.ads) p.set('ads', '1');
   if (state.review) p.set('review', '1');
   if (state.sort === 'shuffle') p.set('seed', shuffleSeed);
+  if (!state.q && !state.saved && !(state.platforms.size === 1 && state.platforms.has('pinterest'))) p.set('pinterest_mix', 'reduced');
   p.set('sort', state.sort === 'balanced' ? 'captured' : state.sort);
   for (const [k, v] of Object.entries(extra)) p.set(k, v);
   return p;

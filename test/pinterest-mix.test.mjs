@@ -1,0 +1,24 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+import {DatabaseSync} from 'node:sqlite';
+test('mixed feed keeps two of every five Pinterest posts without losing other platforms or pagination',()=>{
+  const db=new DatabaseSync(':memory:');
+  db.exec("create table items(id text,platform text,first_seen int, published_at int,seen_count int,flags text,saved int)");
+  const insert=db.prepare("insert into items values(?,?,?,null,1,'{}',0)");
+  for(let i=0;i<25;i++)insert.run('p'+i,'pinterest',i);
+  for(let i=0;i<7;i++)insert.run('x'+i,'x',30+i);
+  const source=fs.readFileSync(new URL('../server.mjs',import.meta.url),'utf8');
+  const fn=source.slice(source.indexOf('function listItems('),source.indexOf('function facets('));
+  const ctx=vm.createContext({db,Date,Math,Number,rowOut:x=>x,attachLabels:x=>x});vm.runInContext(fn,ctx);
+  const query=s=>ctx.listItems(new URLSearchParams(s));
+  const mixed=query('pinterest_mix=reduced&ads=1&limit=200');
+  assert.equal(mixed.filter(x=>x.platform==='pinterest').length,10);
+  assert.equal(mixed.filter(x=>x.platform==='x').length,7);
+  assert.equal(query('pinterest_mix=reduced&platform=pinterest&ads=1&limit=200').length,25);
+  assert.equal(query('ads=1&limit=200').length,32);
+  assert.deepEqual([...query('pinterest_mix=reduced&ads=1&limit=8'),...query('pinterest_mix=reduced&ads=1&limit=200&offset=8')].map(x=>x.id),mixed.map(x=>x.id));
+  assert.equal(db.prepare('select count(*) n from items').get().n,32);
+  db.close();
+});

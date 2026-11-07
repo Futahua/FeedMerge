@@ -176,6 +176,13 @@ function listItems(p) {
   const args = [];
   const platforms = (p.get('platform') || '').split(',').filter(Boolean);
   if (platforms.length) { where.push(`platform in (${platforms.map(() => '?').join(',')})`); args.push(...platforms); }
+  // Thin the mixed viewer feed, not storage, search, saved items or Pinterest-only browsing.
+  // Stable rank sampling happens before LIMIT/OFFSET, so pagination stays full and repeatable.
+  if (p.get('pinterest_mix') === 'reduced' && !p.get('q') && p.get('saved') !== '1' && !(platforms.length === 1 && platforms[0] === 'pinterest')) {
+    where.push(`(platform != 'pinterest' or rowid in (select rid from
+      (select rowid rid, row_number() over (order by rowid) n from items where platform = 'pinterest')
+      where (n - 1) % 5 < 2))`);
+  }
   if (p.get('context')) { where.push('context = ?'); args.push(p.get('context')); }
   for (const id of (p.get('label') || '').split(',').filter(Boolean)) {
     where.push('exists (select 1 from item_labels il where il.item_id = items.id and il.label_id = ? and il.decided >= 0)');
