@@ -107,7 +107,7 @@
         <div class="x-left">${avatar(it, 40)}</div>
         <div class="x-body">
           <div class="x-head"><b>${esc(it.authorName || it.author)}</b>${f.verified ? `<span class="ver">${I.check}</span>` : ''}<span class="mute">@${esc(it.author)} · ${ago(it.publishedAt)}</span></div>
-          ${it.text ? `<div class="x-text">${richText(it.text, 'x')}</div>` : ''}
+          ${it.text ? `<div class="x-text" tabindex="0" aria-label="Post text">${richText(it.text, 'x')}</div>` : ''}
           ${grid(it.media)}
           ${q ? `<a class="x-quote" href="${esc(q.url)}" target="_blank" rel="noopener noreferrer"><div class="x-head">${avatar({ flags: { avatar: q.avatar }, author: q.author }, 20)}<b>${esc(q.name || q.author)}</b><span class="mute">@${esc(q.author)}</span></div><div class="x-text">${esc(q.text)}</div>${q.media?.[0]?.url ? grid([q.media[0]]) : ''}</a>` : ''}
           <div class="x-acts">${act('reply', m.replies)}${act('repost', m.reposts, 'g')}${act('like', m.likes, 'p')}${act('views', m.views)}<span class="grow"></span>${embedBtn(it)}</div>

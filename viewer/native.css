@@ -231,3 +231,7 @@
 .fb-text.fb-text-expanded { display: block; max-height: min(55vh, 440px); overflow-y: auto; overscroll-behavior: contain; -webkit-line-clamp: unset; scrollbar-width: thin; }
 
 .fb-text-expanded:focus-visible { outline: 2px solid var(--c-link); outline-offset: 2px; }
+
+/* Keep long X text readable without burying its media below a tall card. */
+.p-x .x-text { max-height: min(45vh, 320px); overflow-y: auto; overscroll-behavior-y: contain; scrollbar-width: thin; }
+.p-x .x-text:focus-visible { outline: 2px solid var(--c-link); outline-offset: 2px; }
