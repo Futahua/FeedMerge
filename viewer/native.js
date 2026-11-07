@@ -258,10 +258,17 @@
     const h = host(it.url);
     const m = it.media[0];
     const name = it.context && it.context.length < h.length ? it.context : h;
+    // Expanded content: the page's article when it has one; otherwise (feed item pages, picture
+    // feeds) what the feed itself carried, kept in a template until the fetch answers.
     return `<div class="web-head"><img class="fav" src="https://www.google.com/s2/favicons?domain=${encodeURIComponent(h)}&sz=32" alt="" referrerpolicy="no-referrer"><b title="${esc(it.context || h)}">${esc(name)}</b><span class="mute">· ${ago(it.publishedAt || it.firstSeen)}</span></div>
       <a class="web-main" href="${esc(it.url)}" target="_blank" rel="noopener noreferrer"><div><div class="web-title">${esc(it.title || '')}</div>${it.text ? `<div class="web-text clamp3">${esc(it.text)}</div>` : ''}</div>${m ? img(m, 'web-img') : ''}</a>
-      ${it.url ? `<div class="web-article" data-article="${esc(it.id)}" hidden></div>` : ''}`;
+      ${it.url ? `<div class="web-article" data-article="${esc(it.id)}" hidden>${m || it.text ? `<template>${ownHtml(it)}</template>` : ''}</div>` : ''}`;
   };
+  // What the feed itself carried, as the expanded content: the picture large, then the text.
+  // Used when the page has no article to fetch (feed item pages, picture feeds).
+  const ownHtml = it => `${it.media[0] ? `<img src="${esc(src(big(it.media[0].url)))}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ''}${(it.text || '').split(/\n\s*\n/).map(t => t.trim()).filter(Boolean).map(t => `<p>${esc(t)}</p>`).join('')}`;
+  // Wikimedia thumbnails are sized in the address; ask for one wide enough for the card.
+  const big = u => String(u).replace(/(\/thumb\/.+\/)\d+px-/, '$11280px-');
 
   // The article itself, fetched (and cached) by the server when the card comes into view.
   // Blocks are plain text, so a site's own HTML never runs here.
@@ -285,8 +292,17 @@
       const box = e.target.matches('[data-article]') ? e.target : e.target.querySelector('[data-article]');
       if (!box) continue;
       fetch('/api/article?id=' + encodeURIComponent(box.dataset.article)).then(r => r.ok ? r.json() : null).then(a => {
-        if (!a?.blocks?.length) return;
         const card = box.closest('.card');
+        if (!a?.blocks?.length) {
+          // No article on the page: fall back to what the feed carried, shown large.
+          const own = box.querySelector('template');
+          if (!own) return;
+          card?.querySelector('.web-text')?.remove();
+          card?.querySelector('.web-img')?.remove();
+          box.innerHTML = own.innerHTML;
+          box.hidden = false;
+          return;
+        }
         // The opening of the article usually repeats the summary and the lead picture.
         card?.querySelector('.web-text')?.remove();
         if (a.blocks.some(b => b.t === 'img')) card?.querySelector('.web-img')?.remove();
