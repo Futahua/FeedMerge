@@ -189,3 +189,37 @@ so side effects are not blindly repeated. There is a bounded maintenance queue.
 No job grants arbitrary shell access, private-network fetches, login credentials,
 CAPTCHA bypass or new host permissions. Current browser selections/focus and arbitrary
 pixel-level CSS styling remain outside this MCP contract.
+
+
+### World source catalog and explicit content exclusions
+
+`catalogs/world-sources.json` records 258 unique publisher/community identities from
+an imported user list. Repeated references and RSS addresses are grouped, tracking
+parameters removed, and user-excluded gaming/sports publishers marked explicitly.
+Section tags are catalog metadata, not reliability scores or verified political
+classifications. `scripts/import-source-catalog.mjs` resolves entries through the
+existing checked source owner and registers them through normal management receipts.
+It resumes from an ignored local checkpoint and uses the normal poller in manual mode
+(no second scheduler) plus the existing HTTP ingestion path for validation. New sources
+start at a six-hour interval. Existing sources are reused. The local JSON/Markdown
+report distinguishes verified captures, browser-pending sources, empty feeds, failures,
+user exclusions and communities requiring a chosen instance/board. The catalog is not
+proof every source can be fetched or that its reporting is accurate.
+
+Publisher discovery also reads RSS-directory anchors. Sources returning access errors
+or no server-rendered headlines can be explicitly registered in browser mode; they
+remain unverified until an authorized extension answers. Public gzip/deflate/Brotli
+responses are decoded within both wire and decoded byte limits. IPv4 classification
+uses the actual special-use boundaries (see the [IANA registry](https://www.iana.org/assignments/iana-ipv4-special-registry/)),
+so public 192.0.66/192.0.78 publisher hosting is not mistaken for 192.0.0.0/24.
+Loopback, private targets and redirect destinations remain checked.
+
+Content preferences are shared controls `content.blockedTopics`,
+`content.blockedSourceNames` and `content.blockedTerms`. Terms are literal whole words
+or phrases, not executable regex. Queries hide matching posts; obvious incoming
+matches are not ingested. `request_backend_job(action: apply_exclusions)` explicitly
+purges matching existing posts through retention's transactional deletion owner,
+including saved/reviewed matches if they match the explicit exclusion. It takes a
+SQLite backup first. Settings undo does not restore deleted posts. Removed IDs are
+recorded in `content_removed` so a raw-capture reparse cannot resurrect deleted posts.
+The ordinary library-preserving retention and Pinterest trimming policies are unchanged.

@@ -3,6 +3,9 @@
 const number = (fallback,min,max,owner,integer=true) => ({type:'number',default:fallback,min,max,integer,owner});
 const boolean = (fallback,owner) => ({type:'boolean',default:fallback,owner});
 export const CONTROL_CATALOG = {
+ 'content.blockedTopics':{type:'array',default:[],maxItems:40,maxLength:80,owner:'content preferences'},
+ 'content.blockedSourceNames':{type:'array',default:[],maxItems:100,maxLength:120,owner:'content preferences'},
+ 'content.blockedTerms':{type:'array',default:[],maxItems:60,maxLength:80,owner:'content preferences'},
  'ai.enabled':boolean(false,'chat classifier'),
  'ai.model':{type:'string',default:'',maxLength:160,owner:'chat classifier'},
  'ai.systemPrompt':{type:'string',default:null,maxLength:12000,owner:'chat classifier'},
@@ -48,7 +51,7 @@ export function normalizeControlChanges(changes) {
  for(const [name,value] of Object.entries(changes)) {
    const spec=CONTROL_CATALOG[name];if(!spec)throw Error(`Unknown or noneditable control: ${name}`);
    if(spec.env && process.env[spec.env]!==undefined)throw Error(`${name} is locked by the local environment.`);
-   if(value!==null && (typeof value!==spec.type || spec.type==='number'&&(!Number.isFinite(value)||value<spec.min||value>spec.max||spec.integer&&!Number.isInteger(value)) || spec.type==='string'&&(!value.trim()||value.length>spec.maxLength)))throw Error(`Invalid value for ${name}.`);
+   if(value!==null && (spec.type==='array' ? !Array.isArray(value)||value.length>spec.maxItems||value.some(s=>typeof s!=='string'||!s.trim()||s.length>spec.maxLength) : typeof value!==spec.type || spec.type==='number'&&(!Number.isFinite(value)||value<spec.min||value>spec.max||spec.integer&&!Number.isInteger(value)) || spec.type==='string'&&(!value.trim()||value.length>spec.maxLength)))throw Error(`Invalid value for ${name}.`);
    result[name]=value; // null removes an override, restoring the owner's normal default
  }
  return Object.fromEntries(Object.entries(result).sort(([a],[b])=>a.localeCompare(b)));

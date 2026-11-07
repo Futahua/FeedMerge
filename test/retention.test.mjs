@@ -1,9 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
-import { expire, trimPlatform } from '../retention.mjs';
+import { expire, trimPlatform, purgeExcluded } from '../retention.mjs';
+import {compileExclusions} from '../content-preferences.mjs';
 
 const DAY = 86400e3, NOW = 100 * DAY;
+test('literal content exclusions do not confuse whole words or execute regular expressions',()=>{
+ const match=compileExclusions({blockedTerms:['anime','cartoon','C++'],blockedTopics:['Gaming']});
+ assert(match({text:'New anime release'}));assert(match({title:'A cartoon.'}));
+ assert(!match({text:'Cartoonish political speech'}));assert(!match({text:'AnimeX software'}));
+ assert(match({text:'Nothing in text'},['gaming']));assert(!compileExclusions({blockedTerms:['.*']})({text:'anything'}));
+});
 function fixture() {
   const db = new DatabaseSync(':memory:');
   db.exec(`create table items(id text primary key, context text, author text, title text, text text, flags text, last_seen int, saved int default 0);
@@ -70,4 +77,15 @@ test('explicit platform trim halves the total, protects reviewed/library posts a
  for(const id of ['fresh','oldSaved','oldInCollection','oldConfirmed','pushedAgain'])assert(left.includes(id));
  assert.equal(db.prepare("select count(*) n from embeddings where item_id not in (select id from items)").get().n,0);
  assert.equal(db.prepare('select count(*) n from items_fts').get().n,5);
+});
+
+test('explicit topic deletion cleans linked records including saved/collection matches and records removed IDs',()=>{
+ const db=fixture();db.exec("create table labels(id integer primary key,layer text,name text); insert into labels values (1,'topic','Sports'),(2,'topic','Gaming'); update items set context='IGN' where id='oldInCollection'; insert into item_labels values ('oldSaved',1,1)");
+ const r=purgeExcluded(db,{blockedTopics:['Gaming','Sports'],blockedSourceNames:['IGN']});
+ assert.equal(r.removed,5);
+ assert.equal(db.prepare('select count(*) n from content_removed').get().n,5);
+ assert.equal(db.prepare('select count(*) n from collection_items').get().n,0);
+ assert.equal(db.prepare('select count(*) n from items_fts').get().n,4);
+ assert.equal(purgeExcluded(db,{blockedTopics:['Gaming','Sports'],blockedSourceNames:['IGN']}).removed,0);
+ db.close();
 });

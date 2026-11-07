@@ -14,13 +14,14 @@ import { initCategories, startCategorizer } from './categorize.mjs';
 import { initCloudflare, startCloudflare, embeddingStories, cloudflareConfig } from './cloudflare.mjs';
 import { transaction } from './sqlite-transaction.mjs';
 import { reparseCaptures } from './reparse.mjs';
-import { expire, retentionSettings, NAVIGATION } from './retention.mjs';
+import { expire, retentionSettings, NAVIGATION, purgeExcluded } from './retention.mjs';
 import { createManagement } from './management.mjs';
 import { initArticles, getArticle } from './article.mjs';
 import { checkedDestination } from './source-fetch.mjs';
 import { normalizeRules, filterSourceLinks } from './source-rules.mjs';
 import { applyControlOverrides, controlCatalog } from './backend-controls.mjs';
 import { SYSTEM as CHAT_SYSTEM } from './ai.mjs';
+import {initContentPreferences,contentExclusionSql,compileExclusions} from './content-preferences.mjs';
 import { startWikipedia } from './wikipedia.mjs';
 
 const DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -73,6 +74,7 @@ initArticles(db);
 initCategories(db);
 settingsDb = db;
 initCloudflare(db);
+initContentPreferences(db);
 const management = createManagement(db,readConfig);
 let poller = null;
 let categorizer = null;
@@ -107,12 +109,15 @@ function ingest(cap, keepRaw = true, strict = false) {
   try { items = parseCapture({ platform: cap.platform, kind: cap.kind, url: cap.url, pageUrl: cap.pageUrl, capturedAt: t, text }); }
   catch (e) { log('parse error', cap.platform, cap.url, e.message); if (strict) throw e; }
   const seen = new Set();
+  const exclude=compileExclusions(readConfig().content);
+  const wasRemoved=db.prepare('select id from content_removed where id=?');
   let added = 0;
   transaction(db, () => {
     for (const it of items) {
       // Pages you navigate to (a thread's replies, a profile, a search) are not what your
       // feeds pushed to you: they are not stored, and seeing a post there doesn't refresh it.
       if (NAVIGATION.has(it.context)) continue;
+      if(wasRemoved.get(it.id)||exclude(it))continue;
       if (seen.has(it.id)) continue;
       seen.add(it.id);
       const ex = q.get.get(it.id);
@@ -180,6 +185,7 @@ function ftsQuery(text) {
 function listItems(p) {
   const where = [];
   const args = [];
+  const exclusion=contentExclusionSql(readConfig().content);where.push('not '+exclusion.sql);args.push(...exclusion.args);
   const platforms = (p.get('platform') || '').split(',').filter(Boolean);
   if (platforms.length) { where.push(`platform in (${platforms.map(() => '?').join(',')})`); args.push(...platforms); }
   // Thin the mixed viewer feed, not storage, search, saved items or Pinterest-only browsing.
@@ -312,7 +318,7 @@ const server = http.createServer(async (req, res) => {
 
     if(req.method==='GET'&&u.pathname==='/api/backend/controls') {
       const config=readConfig();config.ai={...config.ai,systemPrompt:config.ai?.systemPrompt||CHAT_SYSTEM};
-      return send(res,200,{controls:controlCatalog(db,config),surfaces:{posts:'get_post/search_posts; source captures remain originals',labels:'update_post_labels/edit_taxonomy_label',stories:'create_story/merge_stories/split_story',collections:'manage_collection',sources:'manage_source/inspect_source/test_source_rules/configure_source_extraction/request_source_capture',backend:'configure_backend/request_backend_job/get_ingestion_status',viewer:'shared defaults; current browser zoom and selection stay local',browser:'shared scheduler policy, subject to explicit Chrome host permissions'},jobs:['reparse','expire','recluster','wikipedia'],limitations:['No shell, arbitrary JavaScript, filesystem browsing or credential access through this contract.','No silent host-permission grants or CAPTCHA bypass.','Running/completed jobs are not rolled back by cancelling the queue receipt.']});
+      return send(res,200,{controls:controlCatalog(db,config),surfaces:{posts:'get_post/search_posts; source captures remain originals',labels:'update_post_labels/edit_taxonomy_label',stories:'create_story/merge_stories/split_story',collections:'manage_collection',sources:'manage_source/inspect_source/test_source_rules/configure_source_extraction/request_source_capture',backend:'configure_backend/request_backend_job/get_ingestion_status',viewer:'shared defaults; current browser zoom and selection stay local',browser:'shared scheduler policy, subject to explicit Chrome host permissions'},jobs:['reparse','expire','recluster','wikipedia','apply_exclusions'],limitations:['No shell, arbitrary JavaScript, filesystem browsing or credential access through this contract.','No silent host-permission grants or CAPTCHA bypass.','Running/completed jobs are not rolled back by cancelling the queue receipt.']});
     }
     if(req.method==='GET'&&u.pathname==='/api/capture-policy')return send(res,200,readConfig().capture||{});
     if(req.method==='GET'&&u.pathname==='/api/viewer-policy')return send(res,200,readConfig().viewer||{});
@@ -399,7 +405,8 @@ const server = http.createServer(async (req, res) => {
       if (readConfig().agent?.writes === false) return send(res, 403, { error: 'Agent writes are disabled by the local owner.' });
       const body = JSON.parse(await readBody(req, 100000) || '{}');
       if(agentAction[1]==='preview'&&body.operation==='source_control'&&body.input?.action==='add'){
-        const cfg=readConfig();body.input.resolved=await resolveSource(body.input.input,{locale:body.input.locale||cfg.news?.locale,rsshub:cfg.rsshub||'http://127.0.0.1:1200'});
+        const cfg=readConfig();body.input.resolved=await resolveSource(body.input.input,{locale:body.input.locale||cfg.news?.locale,rsshub:cfg.rsshub||'http://127.0.0.1:1200',browserFallback:body.input.browser_fallback===true});
+        if(typeof body.input.name==='string'&&body.input.name.trim()&&body.input.name.length<=120)body.input.resolved.name=body.input.name.trim();
       }
       if(agentAction[1]==='preview' && body.operation==='source_control' && (body.input?.action==='capture'||body.input?.action==='configure'&&body.input?.mode==='rendered')) {
         const src=db.prepare('select url from sources where id=?').get(body.input.id);
@@ -546,8 +553,8 @@ server.listen(PORT, '127.0.0.1', () => {
     try{
       const action=JSON.parse(job.input).action;
       let backupFile;
-      if(['reparse','expire'].includes(action)){const folder=path.join(DATA,'backups');fs.mkdirSync(folder,{recursive:true});backupFile=path.join(folder,`agent-job-${job.id}.sqlite`);await backup(db,backupFile);}
-      const result=action==='reparse'?reparse():action==='expire'?expire(db):action==='recluster'?categorizer.reclusterNow():await wiki.run();
+      if(['reparse','expire','apply_exclusions'].includes(action)){const folder=path.join(DATA,'backups');fs.mkdirSync(folder,{recursive:true});backupFile=path.join(folder,`agent-job-${job.id}.sqlite`);await backup(db,backupFile);}
+      const result=action==='reparse'?reparse():action==='expire'?expire(db):action==='apply_exclusions'?purgeExcluded(db,readConfig().content):action==='recluster'?categorizer.reclusterNow():await wiki.run();
       db.prepare("update agent_job_runs set status='completed',finished=?,result=? where id=?").run(Date.now(),JSON.stringify({...result??{done:true},...(backupFile?{backup_created:true}:{} )}),job.id);
     }catch(e){db.prepare("update agent_job_runs set status='failed',finished=?,error=? where id=?").run(Date.now(),String(e.message).slice(0,300),job.id);}
     finally{backendBusy=false;}

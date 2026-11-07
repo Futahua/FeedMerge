@@ -11,6 +11,7 @@
 // edges, review marks and its search entry. Settings: meta keys retention_days,
 // retention_raw_days, retention_ad_days, or the FEEDMERGE_RETENTION_* environment variables.
 import { transaction } from './sqlite-transaction.mjs';
+import {initContentPreferences,contentExclusionSql} from './content-preferences.mjs';
 
 const DAY = 86400e3;
 
@@ -66,6 +67,7 @@ function deleteExpiring(db, posts) {
         delete from post_reviews where item_id in (select id from expiring);
         delete from articles where item_id in (select id from expiring);
         delete from item_accounts where item_id in (select id from expiring);
+        delete from collection_items where item_id in (select id from expiring);
         delete from items where id in (select id from expiring);`);
     }
 }
@@ -86,4 +88,17 @@ export function trimPlatform(db, platform, fraction = .5) {
     db.exec('delete from expiring');
     return { platform, before, removed, after: before - removed, requested };
   });
+}
+
+// Explicit user exclusions also apply to saved/reviewed matches. Caller takes a backup.
+export function purgeExcluded(db,policy={}) {
+ initContentPreferences(db);
+ const filter=contentExclusionSql(policy);
+ return transaction(db,()=>{
+   db.exec('create temp table if not exists expiring(id text primary key,rid integer); delete from expiring');
+   db.prepare('insert into expiring select id,rowid from items where '+filter.sql).run(...filter.args);
+   const removed=db.prepare('select count(*) n from expiring').get().n;
+   db.prepare('insert or ignore into content_removed select id,? from expiring').run(Date.now());
+   deleteExpiring(db,removed);db.exec('delete from expiring');return {removed};
+ });
 }

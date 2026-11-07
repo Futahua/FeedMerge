@@ -1,0 +1,3725 @@
+{
+  "description": "Publisher/community catalog extracted from the user-supplied source list. URLs and proposed feeds require live validation; no reliability rankings inferred.",
+  "sources": [
+    {
+      "key": "vnexpress.net",
+      "name": "VnExpress",
+      "urls": [
+        "https://vnexpress.net/"
+      ],
+      "preferred": [
+        "https://vnexpress.net/rss"
+      ],
+      "sections": [
+        "Báo điện tử và trang tin tổng hợp",
+        "Các RSS Việt Nam đã tìm thấy"
+      ],
+      "aliases": [
+        "VnExpress",
+        "Danh mục RSS chính thức"
+      ]
+    },
+    {
+      "key": "tuoitre.vn",
+      "name": "Tuổi Trẻ",
+      "urls": [
+        "https://tuoitre.vn/"
+      ],
+      "preferred": [
+        "https://tuoitre.vn/rss.htm"
+      ],
+      "sections": [
+        "Báo điện tử và trang tin tổng hợp",
+        "Các RSS Việt Nam đã tìm thấy"
+      ],
+      "aliases": [
+        "Tuổi Trẻ",
+        "Danh mục RSS chính thức"
+      ]
+    },
+    {
+      "key": "thanhnien.vn",
+      "name": "Thanh Niên",
+      "urls": [
+        "https://thanhnien.vn/"
+      ],
+      "preferred": [
+        "https://thanhnien.vn/rss/home.rss"
+      ],
+      "sections": [
+        "Báo điện tử và trang tin tổng hợp",
+        "Các RSS Việt Nam đã tìm thấy"
+      ],
+      "aliases": [
+        "Thanh Niên",
+        "RSS trang chủ"
+      ]
+    },
+    {
+      "key": "dantri.com.vn",
+      "name": "Dân Trí",
+      "urls": [
+        "https://dantri.com.vn/"
+      ],
+      "preferred": [
+        "https://dantri.com.vn/rss.htm"
+      ],
+      "sections": [
+        "Báo điện tử và trang tin tổng hợp",
+        "Các RSS Việt Nam đã tìm thấy"
+      ],
+      "aliases": [
+        "Dân Trí",
+        "Danh mục RSS chính thức"
+      ]
+    },
+    {
+      "key": "vietnamnet.vn",
+      "name": "VietnamNet",
+      "urls": [
+        "https://vietnamnet.vn/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Báo điện tử và trang tin tổng hợp"
+      ],
+      "aliases": [
+        "VietnamNet"
+      ]
+    },
+    {
+      "key": "laodong.vn",
+      "name": "Lao Động",
+      "urls": [
+        "https://laodong.vn/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Báo điện tử và trang tin tổng hợp"
+      ],
+      "aliases": [
+        "Lao Động"
+      ]
+    },
+    {
+      "key": "tienphong.vn",
+      "name": "Tiền Phong",
+      "urls": [
+        "https://tienphong.vn/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Báo điện tử và trang tin tổng hợp"
+      ],
+      "aliases": [
+        "Tiền Phong"
+      ]
+    },
+    {
+      "key": "nld.com.vn",
+      "name": "Người Lao Động",
+      "urls": [
+        "https://nld.com.vn/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Báo điện tử và trang tin tổng hợp"
+      ],
+      "aliases": [
+        "Người Lao Động"
+      ]
+    },
+    {
+      "key": "danviet.vn",
+      "name": "Dân Việt",
+      "urls": [
+        "https://danviet.vn/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Báo điện tử và trang tin tổng hợp"
+      ],
+      "aliases": [
+        "Dân Việt"
+      ]
+    },
+    {
+      "key": "plo.vn",
+      "name": "Pháp Luật TP.HCM",
+      "urls": [
+        "https://plo.vn/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Báo điện tử và trang tin tổng hợp"
+      ],
+      "aliases": [
+        "Pháp Luật TP.HCM"
+      ]
+    },
+    {
+      "key": "kenh14.vn",
+      "name": "Kênh14",
+      "urls": [
+        "https://kenh14.vn/"
+      ],
+      "preferred": [
+        "https://kenh14.vn/rss/home.rss"
+      ],
+      "sections": [
+        "Báo điện tử và trang tin tổng hợp",
+        "Các RSS Việt Nam đã tìm thấy"
+      ],
+      "aliases": [
+        "Kênh14",
+        "RSS trang chủ"
+      ]
+    },
+    {
+      "key": "24h.com.vn",
+      "name": "24h",
+      "urls": [
+        "https://www.24h.com.vn/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Báo điện tử và trang tin tổng hợp"
+      ],
+      "aliases": [
+        "24h"
+      ]
+    },
+    {
+      "key": "znews.vn",
+      "name": "Znews",
+      "urls": [
+        "https://znews.vn/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Báo điện tử và trang tin tổng hợp"
+      ],
+      "aliases": [
+        "Znews"
+      ]
+    },
+    {
+      "key": "soha.vn",
+      "name": "Soha",
+      "urls": [
+        "https://soha.vn/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Báo điện tử và trang tin tổng hợp"
+      ],
+      "aliases": [
+        "Soha"
+      ]
+    },
+    {
+      "key": "baomoi.com",
+      "name": "Báo Mới",
+      "urls": [
+        "https://baomoi.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Báo điện tử và trang tin tổng hợp"
+      ],
+      "aliases": [
+        "Báo Mới"
+      ]
+    },
+    {
+      "key": "cafef.vn",
+      "name": "CafeF",
+      "urls": [
+        "https://cafef.vn/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Các nguồn Việt Nam chuyên ngành"
+      ],
+      "aliases": [
+        "CafeF"
+      ]
+    },
+    {
+      "key": "vietstock.vn",
+      "name": "Vietstock",
+      "urls": [
+        "https://vietstock.vn/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Các nguồn Việt Nam chuyên ngành"
+      ],
+      "aliases": [
+        "Vietstock"
+      ]
+    },
+    {
+      "key": "vneconomy.vn",
+      "name": "VnEconomy",
+      "urls": [
+        "https://vneconomy.vn/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Các nguồn Việt Nam chuyên ngành"
+      ],
+      "aliases": [
+        "VnEconomy"
+      ]
+    },
+    {
+      "key": "nhipcaudautu.vn",
+      "name": "Nhịp Cầu Đầu Tư",
+      "urls": [
+        "https://nhipcaudautu.vn/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Các nguồn Việt Nam chuyên ngành"
+      ],
+      "aliases": [
+        "Nhịp Cầu Đầu Tư"
+      ]
+    },
+    {
+      "key": "thesaigontimes.vn",
+      "name": "The Saigon Times",
+      "urls": [
+        "https://thesaigontimes.vn/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Các nguồn Việt Nam chuyên ngành"
+      ],
+      "aliases": [
+        "The Saigon Times"
+      ]
+    },
+    {
+      "key": "tinhte.vn",
+      "name": "Tinh tế",
+      "urls": [
+        "https://tinhte.vn/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Các nguồn Việt Nam chuyên ngành",
+        "Diễn đàn, cộng đồng và blog Việt Nam"
+      ],
+      "aliases": [
+        "Tinh tế",
+        "Tinhte"
+      ]
+    },
+    {
+      "key": "genk.vn",
+      "name": "GenK",
+      "urls": [
+        "https://genk.vn/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Các nguồn Việt Nam chuyên ngành"
+      ],
+      "aliases": [
+        "GenK"
+      ]
+    },
+    {
+      "key": "vnreview.vn",
+      "name": "VnReview",
+      "urls": [
+        "https://vnreview.vn/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Các nguồn Việt Nam chuyên ngành"
+      ],
+      "aliases": [
+        "VnReview"
+      ]
+    },
+    {
+      "key": "viblo.asia",
+      "name": "Viblo",
+      "urls": [
+        "https://viblo.asia/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Các nguồn Việt Nam chuyên ngành",
+        "Diễn đàn, cộng đồng và blog Việt Nam"
+      ],
+      "aliases": [
+        "Viblo"
+      ]
+    },
+    {
+      "key": "kienviet.net",
+      "name": "Kiến Việt",
+      "urls": [
+        "https://kienviet.net/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Các nguồn Việt Nam chuyên ngành"
+      ],
+      "aliases": [
+        "Kiến Việt"
+      ]
+    },
+    {
+      "key": "ashui.com",
+      "name": "Ashui",
+      "urls": [
+        "https://ashui.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Các nguồn Việt Nam chuyên ngành"
+      ],
+      "aliases": [
+        "Ashui"
+      ]
+    },
+    {
+      "key": "tapchikientruc.com.vn",
+      "name": "Tạp chí Kiến trúc",
+      "urls": [
+        "https://tapchikientruc.com.vn/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Các nguồn Việt Nam chuyên ngành"
+      ],
+      "aliases": [
+        "Tạp chí Kiến trúc"
+      ]
+    },
+    {
+      "key": "vietcetera.com",
+      "name": "Vietcetera",
+      "urls": [
+        "https://vietcetera.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Các nguồn Việt Nam chuyên ngành"
+      ],
+      "aliases": [
+        "Vietcetera"
+      ]
+    },
+    {
+      "key": "spiderum.com",
+      "name": "Spiderum",
+      "urls": [
+        "https://spiderum.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Các nguồn Việt Nam chuyên ngành",
+        "Diễn đàn, cộng đồng và blog Việt Nam"
+      ],
+      "aliases": [
+        "Spiderum"
+      ]
+    },
+    {
+      "key": "elle.vn",
+      "name": "ELLE Việt Nam",
+      "urls": [
+        "https://www.elle.vn/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Các nguồn Việt Nam chuyên ngành"
+      ],
+      "aliases": [
+        "ELLE Việt Nam"
+      ]
+    },
+    {
+      "key": "brandsvietnam.com",
+      "name": "Brands Vietnam",
+      "urls": [
+        "https://www.brandsvietnam.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Các nguồn Việt Nam chuyên ngành"
+      ],
+      "aliases": [
+        "Brands Vietnam"
+      ]
+    },
+    {
+      "key": "advertisingvietnam.com",
+      "name": "Advertising Vietnam",
+      "urls": [
+        "https://advertisingvietnam.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Các nguồn Việt Nam chuyên ngành"
+      ],
+      "aliases": [
+        "Advertising Vietnam"
+      ]
+    },
+    {
+      "key": "baochinhphu.vn",
+      "name": "Báo Chính phủ",
+      "urls": [
+        "https://baochinhphu.vn/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Các nguồn Việt Nam chuyên ngành",
+        "5. Nguồn sơ cấp: luật pháp, chính sách, thống kê và nghiên cứu"
+      ],
+      "aliases": [
+        "Báo Chính phủ",
+        "Cổng Chính phủ"
+      ]
+    },
+    {
+      "key": "nhandan.vn",
+      "name": "Nhân Dân",
+      "urls": [
+        "https://nhandan.vn/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Các nguồn Việt Nam chuyên ngành"
+      ],
+      "aliases": [
+        "Nhân Dân"
+      ]
+    },
+    {
+      "key": "vnanet.vn",
+      "name": "Thông tấn xã Việt Nam",
+      "urls": [
+        "https://vnanet.vn/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Các nguồn Việt Nam chuyên ngành"
+      ],
+      "aliases": [
+        "Thông tấn xã Việt Nam"
+      ]
+    },
+    {
+      "key": "vtv.vn",
+      "name": "VTV",
+      "urls": [
+        "https://vtv.vn/"
+      ],
+      "preferred": [
+        "https://vtv.vn/rss/home.rss"
+      ],
+      "sections": [
+        "Các nguồn Việt Nam chuyên ngành",
+        "Các RSS Việt Nam đã tìm thấy"
+      ],
+      "aliases": [
+        "VTV",
+        "RSS trang chủ"
+      ]
+    },
+    {
+      "key": "vbpl.vn",
+      "name": "Cơ sở dữ liệu quốc gia về văn bản pháp luật",
+      "urls": [
+        "https://vbpl.vn/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Các nguồn Việt Nam chuyên ngành",
+        "5. Nguồn sơ cấp: luật pháp, chính sách, thống kê và nghiên cứu"
+      ],
+      "aliases": [
+        "Cơ sở dữ liệu quốc gia về văn bản pháp luật",
+        "Cơ sở dữ liệu VBPL"
+      ]
+    },
+    {
+      "key": "thuvienphapluat.vn",
+      "name": "Thư Viện Pháp Luật",
+      "urls": [
+        "https://thuvienphapluat.vn/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Các nguồn Việt Nam chuyên ngành"
+      ],
+      "aliases": [
+        "Thư Viện Pháp Luật"
+      ]
+    },
+    {
+      "key": "luatvietnam.vn",
+      "name": "Luật Việt Nam",
+      "urls": [
+        "https://luatvietnam.vn/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Các nguồn Việt Nam chuyên ngành"
+      ],
+      "aliases": [
+        "Luật Việt Nam"
+      ]
+    },
+    {
+      "key": "voz.vn",
+      "name": "VOZ",
+      "urls": [
+        "https://voz.vn/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Diễn đàn, cộng đồng và blog Việt Nam"
+      ],
+      "aliases": [
+        "VOZ"
+      ]
+    },
+    {
+      "key": "otofun.net",
+      "name": "Otofun",
+      "urls": [
+        "https://www.otofun.net/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Diễn đàn, cộng đồng và blog Việt Nam"
+      ],
+      "aliases": [
+        "Otofun"
+      ]
+    },
+    {
+      "key": "webtretho.com",
+      "name": "Webtretho",
+      "urls": [
+        "https://www.webtretho.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Diễn đàn, cộng đồng và blog Việt Nam"
+      ],
+      "aliases": [
+        "Webtretho"
+      ]
+    },
+    {
+      "key": "lamchame.com",
+      "name": "Lamchame",
+      "urls": [
+        "https://www.lamchame.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Diễn đàn, cộng đồng và blog Việt Nam"
+      ],
+      "aliases": [
+        "Lamchame"
+      ]
+    },
+    {
+      "key": "noron.vn",
+      "name": "Noron",
+      "urls": [
+        "https://www.noron.vn/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Diễn đàn, cộng đồng và blog Việt Nam"
+      ],
+      "aliases": [
+        "Noron"
+      ]
+    },
+    {
+      "key": "channelnewsasia.com",
+      "name": "CNA",
+      "urls": [
+        "https://www.channelnewsasia.com/"
+      ],
+      "preferred": [
+        "https://www.channelnewsasia.com/rss"
+      ],
+      "sections": [
+        "Châu Á",
+        "6. RSS quốc tế để bắt đầu tích hợp"
+      ],
+      "aliases": [
+        "CNA",
+        "Danh mục RSS chính thức"
+      ]
+    },
+    {
+      "key": "straitstimes.com",
+      "name": "The Straits Times",
+      "urls": [
+        "https://www.straitstimes.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Á"
+      ],
+      "aliases": [
+        "The Straits Times"
+      ]
+    },
+    {
+      "key": "kompas.com",
+      "name": "Kompas",
+      "urls": [
+        "https://www.kompas.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Á"
+      ],
+      "aliases": [
+        "Kompas"
+      ]
+    },
+    {
+      "key": "tempo.co",
+      "name": "Tempo",
+      "urls": [
+        "https://www.tempo.co/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Á"
+      ],
+      "aliases": [
+        "Tempo"
+      ]
+    },
+    {
+      "key": "thejakartapost.com",
+      "name": "The Jakarta Post",
+      "urls": [
+        "https://www.thejakartapost.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Á"
+      ],
+      "aliases": [
+        "The Jakarta Post"
+      ]
+    },
+    {
+      "key": "malaysiakini.com",
+      "name": "Malaysiakini",
+      "urls": [
+        "https://www.malaysiakini.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Á"
+      ],
+      "aliases": [
+        "Malaysiakini"
+      ]
+    },
+    {
+      "key": "thestar.com.my",
+      "name": "The Star",
+      "urls": [
+        "https://www.thestar.com.my/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Á"
+      ],
+      "aliases": [
+        "The Star"
+      ]
+    },
+    {
+      "key": "freemalaysiatoday.com",
+      "name": "Free Malaysia Today",
+      "urls": [
+        "https://www.freemalaysiatoday.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Á"
+      ],
+      "aliases": [
+        "Free Malaysia Today"
+      ]
+    },
+    {
+      "key": "rappler.com",
+      "name": "Rappler",
+      "urls": [
+        "https://www.rappler.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Á"
+      ],
+      "aliases": [
+        "Rappler"
+      ]
+    },
+    {
+      "key": "inquirer.net",
+      "name": "Philippine Daily Inquirer",
+      "urls": [
+        "https://www.inquirer.net/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Á"
+      ],
+      "aliases": [
+        "Philippine Daily Inquirer"
+      ]
+    },
+    {
+      "key": "gmanetwork.com",
+      "name": "GMA News",
+      "urls": [
+        "https://www.gmanetwork.com/news/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Á"
+      ],
+      "aliases": [
+        "GMA News"
+      ]
+    },
+    {
+      "key": "bangkokpost.com",
+      "name": "Bangkok Post",
+      "urls": [
+        "https://www.bangkokpost.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Á"
+      ],
+      "aliases": [
+        "Bangkok Post"
+      ]
+    },
+    {
+      "key": "thaipbs.or.th",
+      "name": "Thai PBS",
+      "urls": [
+        "https://www.thaipbs.or.th/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Á"
+      ],
+      "aliases": [
+        "Thai PBS"
+      ]
+    },
+    {
+      "key": "prachatai.com",
+      "name": "Prachatai",
+      "urls": [
+        "https://prachatai.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Á"
+      ],
+      "aliases": [
+        "Prachatai"
+      ]
+    },
+    {
+      "key": "www3.nhk.or.jp",
+      "name": "NHK World",
+      "urls": [
+        "https://www3.nhk.or.jp/nhkworld/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Á"
+      ],
+      "aliases": [
+        "NHK World"
+      ]
+    },
+    {
+      "key": "asia.nikkei.com",
+      "name": "Nikkei Asia",
+      "urls": [
+        "https://asia.nikkei.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Á",
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "Nikkei Asia"
+      ]
+    },
+    {
+      "key": "japantimes.co.jp",
+      "name": "The Japan Times",
+      "urls": [
+        "https://www.japantimes.co.jp/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Á"
+      ],
+      "aliases": [
+        "The Japan Times"
+      ]
+    },
+    {
+      "key": "en.yna.co.kr",
+      "name": "Yonhap",
+      "urls": [
+        "https://en.yna.co.kr/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Á"
+      ],
+      "aliases": [
+        "Yonhap"
+      ]
+    },
+    {
+      "key": "koreaherald.com",
+      "name": "The Korea Herald",
+      "urls": [
+        "https://www.koreaherald.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Á"
+      ],
+      "aliases": [
+        "The Korea Herald"
+      ]
+    },
+    {
+      "key": "caixinglobal.com",
+      "name": "Caixin Global",
+      "urls": [
+        "https://www.caixinglobal.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Á"
+      ],
+      "aliases": [
+        "Caixin Global"
+      ]
+    },
+    {
+      "key": "scmp.com",
+      "name": "South China Morning Post",
+      "urls": [
+        "https://www.scmp.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Á"
+      ],
+      "aliases": [
+        "South China Morning Post"
+      ]
+    },
+    {
+      "key": "sixthtone.com",
+      "name": "Sixth Tone",
+      "urls": [
+        "https://www.sixthtone.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Á"
+      ],
+      "aliases": [
+        "Sixth Tone"
+      ]
+    },
+    {
+      "key": "focustaiwan.tw",
+      "name": "Focus Taiwan",
+      "urls": [
+        "https://focustaiwan.tw/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Á"
+      ],
+      "aliases": [
+        "Focus Taiwan"
+      ]
+    },
+    {
+      "key": "taipeitimes.com",
+      "name": "Taipei Times",
+      "urls": [
+        "https://www.taipeitimes.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Á"
+      ],
+      "aliases": [
+        "Taipei Times"
+      ]
+    },
+    {
+      "key": "thehindu.com",
+      "name": "The Hindu",
+      "urls": [
+        "https://www.thehindu.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Á"
+      ],
+      "aliases": [
+        "The Hindu"
+      ]
+    },
+    {
+      "key": "indianexpress.com",
+      "name": "The Indian Express",
+      "urls": [
+        "https://indianexpress.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Á"
+      ],
+      "aliases": [
+        "The Indian Express"
+      ]
+    },
+    {
+      "key": "scroll.in",
+      "name": "Scroll",
+      "urls": [
+        "https://scroll.in/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Á"
+      ],
+      "aliases": [
+        "Scroll"
+      ]
+    },
+    {
+      "key": "thewire.in",
+      "name": "The Wire",
+      "urls": [
+        "https://thewire.in/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Á"
+      ],
+      "aliases": [
+        "The Wire"
+      ]
+    },
+    {
+      "key": "dawn.com",
+      "name": "Dawn",
+      "urls": [
+        "https://www.dawn.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Á"
+      ],
+      "aliases": [
+        "Dawn"
+      ]
+    },
+    {
+      "key": "thedailystar.net",
+      "name": "The Daily Star",
+      "urls": [
+        "https://www.thedailystar.net/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Á"
+      ],
+      "aliases": [
+        "The Daily Star"
+      ]
+    },
+    {
+      "key": "en.prothomalo.com",
+      "name": "Prothom Alo",
+      "urls": [
+        "https://en.prothomalo.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Á"
+      ],
+      "aliases": [
+        "Prothom Alo"
+      ]
+    },
+    {
+      "key": "kathmandupost.com",
+      "name": "The Kathmandu Post",
+      "urls": [
+        "https://kathmandupost.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Á"
+      ],
+      "aliases": [
+        "The Kathmandu Post"
+      ]
+    },
+    {
+      "key": "aljazeera.com",
+      "name": "Al Jazeera",
+      "urls": [
+        "https://www.aljazeera.com/"
+      ],
+      "preferred": [
+        "https://www.aljazeera.com/xml/rss/all.xml"
+      ],
+      "sections": [
+        "Trung Đông và Bắc Phi",
+        "6. RSS quốc tế để bắt đầu tích hợp"
+      ],
+      "aliases": [
+        "Al Jazeera",
+        "All News RSS"
+      ]
+    },
+    {
+      "key": "al-monitor.com",
+      "name": "Al-Monitor",
+      "urls": [
+        "https://www.al-monitor.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Trung Đông và Bắc Phi"
+      ],
+      "aliases": [
+        "Al-Monitor"
+      ]
+    },
+    {
+      "key": "middleeasteye.net",
+      "name": "Middle East Eye",
+      "urls": [
+        "https://www.middleeasteye.net/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Trung Đông và Bắc Phi"
+      ],
+      "aliases": [
+        "Middle East Eye"
+      ]
+    },
+    {
+      "key": "thenationalnews.com",
+      "name": "The National",
+      "urls": [
+        "https://www.thenationalnews.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Trung Đông và Bắc Phi"
+      ],
+      "aliases": [
+        "The National"
+      ]
+    },
+    {
+      "key": "arabnews.com",
+      "name": "Arab News",
+      "urls": [
+        "https://www.arabnews.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Trung Đông và Bắc Phi"
+      ],
+      "aliases": [
+        "Arab News"
+      ]
+    },
+    {
+      "key": "aa.com.tr",
+      "name": "Anadolu Agency",
+      "urls": [
+        "https://www.aa.com.tr/en"
+      ],
+      "preferred": [],
+      "sections": [
+        "Trung Đông và Bắc Phi"
+      ],
+      "aliases": [
+        "Anadolu Agency"
+      ]
+    },
+    {
+      "key": "haaretz.com",
+      "name": "Haaretz",
+      "urls": [
+        "https://www.haaretz.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Trung Đông và Bắc Phi"
+      ],
+      "aliases": [
+        "Haaretz"
+      ]
+    },
+    {
+      "key": "972mag.com",
+      "name": "+972 Magazine",
+      "urls": [
+        "https://www.972mag.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Trung Đông và Bắc Phi"
+      ],
+      "aliases": [
+        "+972 Magazine"
+      ]
+    },
+    {
+      "key": "madamasr.com",
+      "name": "Mada Masr",
+      "urls": [
+        "https://www.madamasr.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Trung Đông và Bắc Phi"
+      ],
+      "aliases": [
+        "Mada Masr"
+      ]
+    },
+    {
+      "key": "inkyfada.com",
+      "name": "Inkyfada",
+      "urls": [
+        "https://inkyfada.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Trung Đông và Bắc Phi"
+      ],
+      "aliases": [
+        "Inkyfada"
+      ]
+    },
+    {
+      "key": "dailymaverick.co.za",
+      "name": "Daily Maverick",
+      "urls": [
+        "https://www.dailymaverick.co.za/"
+      ],
+      "preferred": [
+        "https://www.dailymaverick.co.za/dmrss/"
+      ],
+      "sections": [
+        "Châu Phi",
+        "6. RSS quốc tế để bắt đầu tích hợp"
+      ],
+      "aliases": [
+        "Daily Maverick",
+        "News RSS"
+      ]
+    },
+    {
+      "key": "news24.com",
+      "name": "News24",
+      "urls": [
+        "https://www.news24.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Phi"
+      ],
+      "aliases": [
+        "News24"
+      ]
+    },
+    {
+      "key": "mg.co.za",
+      "name": "Mail & Guardian",
+      "urls": [
+        "https://mg.co.za/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Phi"
+      ],
+      "aliases": [
+        "Mail & Guardian"
+      ]
+    },
+    {
+      "key": "groundup.org.za",
+      "name": "GroundUp",
+      "urls": [
+        "https://groundup.org.za/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Phi"
+      ],
+      "aliases": [
+        "GroundUp"
+      ]
+    },
+    {
+      "key": "premiumtimesng.com",
+      "name": "Premium Times",
+      "urls": [
+        "https://www.premiumtimesng.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Phi"
+      ],
+      "aliases": [
+        "Premium Times"
+      ]
+    },
+    {
+      "key": "thecable.ng",
+      "name": "TheCable",
+      "urls": [
+        "https://www.thecable.ng/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Phi"
+      ],
+      "aliases": [
+        "TheCable"
+      ]
+    },
+    {
+      "key": "guardian.ng",
+      "name": "The Guardian Nigeria",
+      "urls": [
+        "https://guardian.ng/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Phi"
+      ],
+      "aliases": [
+        "The Guardian Nigeria"
+      ]
+    },
+    {
+      "key": "nation.africa",
+      "name": "Nation Africa",
+      "urls": [
+        "https://nation.africa/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Phi"
+      ],
+      "aliases": [
+        "Nation Africa"
+      ]
+    },
+    {
+      "key": "theeastafrican.co.ke",
+      "name": "The EastAfrican",
+      "urls": [
+        "https://www.theeastafrican.co.ke/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Phi"
+      ],
+      "aliases": [
+        "The EastAfrican"
+      ]
+    },
+    {
+      "key": "africanews.com",
+      "name": "Africanews",
+      "urls": [
+        "https://www.africanews.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Phi"
+      ],
+      "aliases": [
+        "Africanews"
+      ]
+    },
+    {
+      "key": "theafricareport.com",
+      "name": "The Africa Report",
+      "urls": [
+        "https://www.theafricareport.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Phi"
+      ],
+      "aliases": [
+        "The Africa Report"
+      ]
+    },
+    {
+      "key": "africanarguments.org",
+      "name": "African Arguments",
+      "urls": [
+        "https://africanarguments.org/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Phi"
+      ],
+      "aliases": [
+        "African Arguments"
+      ]
+    },
+    {
+      "key": "jeuneafrique.com",
+      "name": "Jeune Afrique",
+      "urls": [
+        "https://www.jeuneafrique.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Phi"
+      ],
+      "aliases": [
+        "Jeune Afrique"
+      ]
+    },
+    {
+      "key": "rfi.fr",
+      "name": "RFI Afrique",
+      "urls": [
+        "https://www.rfi.fr/",
+        "https://www.rfi.fr/fr/afrique/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Phi",
+        "Châu Âu"
+      ],
+      "aliases": [
+        "RFI Afrique",
+        "RFI"
+      ]
+    },
+    {
+      "key": "bbc.com",
+      "name": "BBC",
+      "urls": [
+        "https://www.bbc.com/news"
+      ],
+      "preferred": [
+        "https://feeds.bbci.co.uk/news/world/rss.xml"
+      ],
+      "sections": [
+        "Châu Âu",
+        "6. RSS quốc tế để bắt đầu tích hợp"
+      ],
+      "aliases": [
+        "BBC",
+        "World RSS"
+      ]
+    },
+    {
+      "key": "theguardian.com",
+      "name": "The Guardian",
+      "urls": [
+        "https://www.theguardian.com/",
+        "https://www.theguardian.com/australia-news"
+      ],
+      "preferred": [
+        "https://www.theguardian.com/world/rss"
+      ],
+      "sections": [
+        "Châu Âu",
+        "Châu Đại Dương và Thái Bình Dương",
+        "6. RSS quốc tế để bắt đầu tích hợp"
+      ],
+      "aliases": [
+        "The Guardian",
+        "The Guardian Australia",
+        "World RSS"
+      ]
+    },
+    {
+      "key": "ft.com",
+      "name": "Financial Times",
+      "urls": [
+        "https://www.ft.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Âu",
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "Financial Times"
+      ]
+    },
+    {
+      "key": "dw.com",
+      "name": "DW",
+      "urls": [
+        "https://www.dw.com/"
+      ],
+      "preferred": [
+        "https://rss.dw.com/rdf/rss-en-all"
+      ],
+      "sections": [
+        "Châu Âu",
+        "6. RSS quốc tế để bắt đầu tích hợp"
+      ],
+      "aliases": [
+        "DW",
+        "All News RSS"
+      ]
+    },
+    {
+      "key": "spiegel.de",
+      "name": "Der Spiegel",
+      "urls": [
+        "https://www.spiegel.de/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Âu"
+      ],
+      "aliases": [
+        "Der Spiegel"
+      ]
+    },
+    {
+      "key": "france24.com",
+      "name": "France 24",
+      "urls": [
+        "https://www.france24.com/"
+      ],
+      "preferred": [
+        "https://www.france24.com/en/rss"
+      ],
+      "sections": [
+        "Châu Âu",
+        "6. RSS quốc tế để bắt đầu tích hợp"
+      ],
+      "aliases": [
+        "France 24",
+        "English RSS"
+      ]
+    },
+    {
+      "key": "lemonde.fr",
+      "name": "Le Monde",
+      "urls": [
+        "https://www.lemonde.fr/"
+      ],
+      "preferred": [
+        "https://www.lemonde.fr/en/about-us/article/2026/03/27/le-monde-rss-feeds_6751860_115.html"
+      ],
+      "sections": [
+        "Châu Âu",
+        "6. RSS quốc tế để bắt đầu tích hợp"
+      ],
+      "aliases": [
+        "Le Monde",
+        "Danh mục RSS chính thức"
+      ]
+    },
+    {
+      "key": "elpais.com",
+      "name": "El País",
+      "urls": [
+        "https://elpais.com/",
+        "https://elpais.com/america/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Âu",
+        "Mỹ Latinh"
+      ],
+      "aliases": [
+        "El País",
+        "El País América"
+      ]
+    },
+    {
+      "key": "eldiario.es",
+      "name": "elDiario.es",
+      "urls": [
+        "https://www.eldiario.es/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Âu"
+      ],
+      "aliases": [
+        "elDiario.es"
+      ]
+    },
+    {
+      "key": "euronews.com",
+      "name": "Euronews",
+      "urls": [
+        "https://www.euronews.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Âu"
+      ],
+      "aliases": [
+        "Euronews"
+      ]
+    },
+    {
+      "key": "politico.eu",
+      "name": "POLITICO Europe",
+      "urls": [
+        "https://www.politico.eu/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Âu"
+      ],
+      "aliases": [
+        "POLITICO Europe"
+      ]
+    },
+    {
+      "key": "euractiv.com",
+      "name": "Euractiv",
+      "urls": [
+        "https://www.euractiv.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Âu"
+      ],
+      "aliases": [
+        "Euractiv"
+      ]
+    },
+    {
+      "key": "swissinfo.ch",
+      "name": "Swissinfo",
+      "urls": [
+        "https://www.swissinfo.ch/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Âu"
+      ],
+      "aliases": [
+        "Swissinfo"
+      ]
+    },
+    {
+      "key": "balkaninsight.com",
+      "name": "Balkan Insight",
+      "urls": [
+        "https://balkaninsight.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Âu"
+      ],
+      "aliases": [
+        "Balkan Insight"
+      ]
+    },
+    {
+      "key": "kyivindependent.com",
+      "name": "The Kyiv Independent",
+      "urls": [
+        "https://kyivindependent.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Âu"
+      ],
+      "aliases": [
+        "The Kyiv Independent"
+      ]
+    },
+    {
+      "key": "meduza.io",
+      "name": "Meduza",
+      "urls": [
+        "https://meduza.io/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Âu"
+      ],
+      "aliases": [
+        "Meduza"
+      ]
+    },
+    {
+      "key": "themoscowtimes.com",
+      "name": "The Moscow Times",
+      "urls": [
+        "https://www.themoscowtimes.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Âu"
+      ],
+      "aliases": [
+        "The Moscow Times"
+      ]
+    },
+    {
+      "key": "apnews.com",
+      "name": "Associated Press",
+      "urls": [
+        "https://apnews.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Bắc Mỹ"
+      ],
+      "aliases": [
+        "Associated Press"
+      ]
+    },
+    {
+      "key": "reuters.com",
+      "name": "Reuters",
+      "urls": [
+        "https://www.reuters.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Bắc Mỹ"
+      ],
+      "aliases": [
+        "Reuters"
+      ]
+    },
+    {
+      "key": "npr.org",
+      "name": "NPR",
+      "urls": [
+        "https://www.npr.org/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Bắc Mỹ"
+      ],
+      "aliases": [
+        "NPR"
+      ]
+    },
+    {
+      "key": "pbs.org",
+      "name": "PBS News",
+      "urls": [
+        "https://www.pbs.org/newshour"
+      ],
+      "preferred": [],
+      "sections": [
+        "Bắc Mỹ"
+      ],
+      "aliases": [
+        "PBS News"
+      ]
+    },
+    {
+      "key": "nytimes.com",
+      "name": "The New York Times",
+      "urls": [
+        "https://www.nytimes.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Bắc Mỹ"
+      ],
+      "aliases": [
+        "The New York Times"
+      ]
+    },
+    {
+      "key": "wsj.com",
+      "name": "The Wall Street Journal",
+      "urls": [
+        "https://www.wsj.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Bắc Mỹ"
+      ],
+      "aliases": [
+        "The Wall Street Journal"
+      ]
+    },
+    {
+      "key": "washingtonpost.com",
+      "name": "The Washington Post",
+      "urls": [
+        "https://www.washingtonpost.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Bắc Mỹ"
+      ],
+      "aliases": [
+        "The Washington Post"
+      ]
+    },
+    {
+      "key": "propublica.org",
+      "name": "ProPublica",
+      "urls": [
+        "https://www.propublica.org/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Bắc Mỹ"
+      ],
+      "aliases": [
+        "ProPublica"
+      ]
+    },
+    {
+      "key": "axios.com",
+      "name": "Axios",
+      "urls": [
+        "https://www.axios.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Bắc Mỹ"
+      ],
+      "aliases": [
+        "Axios"
+      ]
+    },
+    {
+      "key": "theconversation.com",
+      "name": "The Conversation US",
+      "urls": [
+        "https://theconversation.com/",
+        "https://theconversation.com/us"
+      ],
+      "preferred": [],
+      "sections": [
+        "Bắc Mỹ",
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "The Conversation US",
+        "The Conversation"
+      ]
+    },
+    {
+      "key": "cbc.ca",
+      "name": "CBC",
+      "urls": [
+        "https://www.cbc.ca/news"
+      ],
+      "preferred": [],
+      "sections": [
+        "Bắc Mỹ"
+      ],
+      "aliases": [
+        "CBC"
+      ]
+    },
+    {
+      "key": "theglobeandmail.com",
+      "name": "The Globe and Mail",
+      "urls": [
+        "https://www.theglobeandmail.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Bắc Mỹ"
+      ],
+      "aliases": [
+        "The Globe and Mail"
+      ]
+    },
+    {
+      "key": "thenarwhal.ca",
+      "name": "The Narwhal",
+      "urls": [
+        "https://thenarwhal.ca/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Bắc Mỹ"
+      ],
+      "aliases": [
+        "The Narwhal"
+      ]
+    },
+    {
+      "key": "g1.globo.com",
+      "name": "G1",
+      "urls": [
+        "https://g1.globo.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Mỹ Latinh"
+      ],
+      "aliases": [
+        "G1"
+      ]
+    },
+    {
+      "key": "folha.uol.com.br",
+      "name": "Folha de S.Paulo",
+      "urls": [
+        "https://www.folha.uol.com.br/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Mỹ Latinh"
+      ],
+      "aliases": [
+        "Folha de S.Paulo"
+      ]
+    },
+    {
+      "key": "apublica.org",
+      "name": "Agência Pública",
+      "urls": [
+        "https://apublica.org/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Mỹ Latinh"
+      ],
+      "aliases": [
+        "Agência Pública"
+      ]
+    },
+    {
+      "key": "lanacion.com.ar",
+      "name": "La Nación",
+      "urls": [
+        "https://www.lanacion.com.ar/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Mỹ Latinh"
+      ],
+      "aliases": [
+        "La Nación"
+      ]
+    },
+    {
+      "key": "clarin.com",
+      "name": "Clarín",
+      "urls": [
+        "https://www.clarin.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Mỹ Latinh"
+      ],
+      "aliases": [
+        "Clarín"
+      ]
+    },
+    {
+      "key": "chequeado.com",
+      "name": "Chequeado",
+      "urls": [
+        "https://chequeado.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Mỹ Latinh"
+      ],
+      "aliases": [
+        "Chequeado"
+      ]
+    },
+    {
+      "key": "eluniversal.com.mx",
+      "name": "El Universal",
+      "urls": [
+        "https://www.eluniversal.com.mx/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Mỹ Latinh"
+      ],
+      "aliases": [
+        "El Universal"
+      ]
+    },
+    {
+      "key": "animalpolitico.com",
+      "name": "Animal Político",
+      "urls": [
+        "https://animalpolitico.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Mỹ Latinh"
+      ],
+      "aliases": [
+        "Animal Político"
+      ]
+    },
+    {
+      "key": "aristeguinoticias.com",
+      "name": "Aristegui Noticias",
+      "urls": [
+        "https://aristeguinoticias.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Mỹ Latinh"
+      ],
+      "aliases": [
+        "Aristegui Noticias"
+      ]
+    },
+    {
+      "key": "eltiempo.com",
+      "name": "El Tiempo",
+      "urls": [
+        "https://www.eltiempo.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Mỹ Latinh"
+      ],
+      "aliases": [
+        "El Tiempo"
+      ]
+    },
+    {
+      "key": "elespectador.com",
+      "name": "El Espectador",
+      "urls": [
+        "https://www.elespectador.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Mỹ Latinh"
+      ],
+      "aliases": [
+        "El Espectador"
+      ]
+    },
+    {
+      "key": "lasillavacia.com",
+      "name": "La Silla Vacía",
+      "urls": [
+        "https://www.lasillavacia.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Mỹ Latinh"
+      ],
+      "aliases": [
+        "La Silla Vacía"
+      ]
+    },
+    {
+      "key": "biobiochile.cl",
+      "name": "BioBioChile",
+      "urls": [
+        "https://www.biobiochile.cl/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Mỹ Latinh"
+      ],
+      "aliases": [
+        "BioBioChile"
+      ]
+    },
+    {
+      "key": "latercera.com",
+      "name": "La Tercera",
+      "urls": [
+        "https://www.latercera.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Mỹ Latinh"
+      ],
+      "aliases": [
+        "La Tercera"
+      ]
+    },
+    {
+      "key": "elcomercio.pe",
+      "name": "El Comercio",
+      "urls": [
+        "https://elcomercio.pe/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Mỹ Latinh"
+      ],
+      "aliases": [
+        "El Comercio"
+      ]
+    },
+    {
+      "key": "rpp.pe",
+      "name": "RPP",
+      "urls": [
+        "https://rpp.pe/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Mỹ Latinh"
+      ],
+      "aliases": [
+        "RPP"
+      ]
+    },
+    {
+      "key": "infobae.com",
+      "name": "Infobae",
+      "urls": [
+        "https://www.infobae.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Mỹ Latinh"
+      ],
+      "aliases": [
+        "Infobae"
+      ]
+    },
+    {
+      "key": "abc.net.au",
+      "name": "ABC News",
+      "urls": [
+        "https://www.abc.net.au/news"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Đại Dương và Thái Bình Dương"
+      ],
+      "aliases": [
+        "ABC News"
+      ]
+    },
+    {
+      "key": "sbs.com.au",
+      "name": "SBS News",
+      "urls": [
+        "https://www.sbs.com.au/news"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Đại Dương và Thái Bình Dương"
+      ],
+      "aliases": [
+        "SBS News"
+      ]
+    },
+    {
+      "key": "rnz.co.nz",
+      "name": "RNZ",
+      "urls": [
+        "https://www.rnz.co.nz/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Đại Dương và Thái Bình Dương"
+      ],
+      "aliases": [
+        "RNZ"
+      ]
+    },
+    {
+      "key": "stuff.co.nz",
+      "name": "Stuff",
+      "urls": [
+        "https://www.stuff.co.nz/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Đại Dương và Thái Bình Dương"
+      ],
+      "aliases": [
+        "Stuff"
+      ]
+    },
+    {
+      "key": "islandsbusiness.com",
+      "name": "Islands Business",
+      "urls": [
+        "https://islandsbusiness.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Đại Dương và Thái Bình Dương"
+      ],
+      "aliases": [
+        "Islands Business"
+      ]
+    },
+    {
+      "key": "fijitimes.com",
+      "name": "The Fiji Times",
+      "urls": [
+        "https://www.fijitimes.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "Châu Đại Dương và Thái Bình Dương"
+      ],
+      "aliases": [
+        "The Fiji Times"
+      ]
+    },
+    {
+      "key": "theverge.com",
+      "name": "The Verge",
+      "urls": [
+        "https://www.theverge.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "The Verge"
+      ]
+    },
+    {
+      "key": "wired.com",
+      "name": "Wired",
+      "urls": [
+        "https://www.wired.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "Wired"
+      ]
+    },
+    {
+      "key": "techcrunch.com",
+      "name": "TechCrunch",
+      "urls": [
+        "https://techcrunch.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "TechCrunch"
+      ]
+    },
+    {
+      "key": "engadget.com",
+      "name": "Engadget",
+      "urls": [
+        "https://www.engadget.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "Engadget"
+      ]
+    },
+    {
+      "key": "arstechnica.com",
+      "name": "Ars Technica",
+      "urls": [
+        "https://arstechnica.com/"
+      ],
+      "preferred": [
+        "https://feeds.arstechnica.com/arstechnica/index"
+      ],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự",
+        "6. RSS quốc tế để bắt đầu tích hợp"
+      ],
+      "aliases": [
+        "Ars Technica",
+        "Technology RSS"
+      ]
+    },
+    {
+      "key": "theregister.com",
+      "name": "The Register",
+      "urls": [
+        "https://www.theregister.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "The Register"
+      ]
+    },
+    {
+      "key": "phoronix.com",
+      "name": "Phoronix",
+      "urls": [
+        "https://www.phoronix.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "Phoronix"
+      ]
+    },
+    {
+      "key": "infoq.com",
+      "name": "InfoQ",
+      "urls": [
+        "https://www.infoq.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "InfoQ"
+      ]
+    },
+    {
+      "key": "restofworld.org",
+      "name": "Rest of World",
+      "urls": [
+        "https://restofworld.org/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "Rest of World"
+      ]
+    },
+    {
+      "key": "techinasia.com",
+      "name": "Tech in Asia",
+      "urls": [
+        "https://www.techinasia.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "Tech in Asia"
+      ]
+    },
+    {
+      "key": "technode.com",
+      "name": "TechNode",
+      "urls": [
+        "https://technode.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "TechNode"
+      ]
+    },
+    {
+      "key": "404media.co",
+      "name": "404 Media",
+      "urls": [
+        "https://www.404media.co/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "404 Media"
+      ]
+    },
+    {
+      "key": "krebsonsecurity.com",
+      "name": "Krebs on Security",
+      "urls": [
+        "https://krebsonsecurity.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "Krebs on Security"
+      ]
+    },
+    {
+      "key": "bleepingcomputer.com",
+      "name": "BleepingComputer",
+      "urls": [
+        "https://www.bleepingcomputer.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "BleepingComputer"
+      ]
+    },
+    {
+      "key": "spectrum.ieee.org",
+      "name": "IEEE Spectrum",
+      "urls": [
+        "https://spectrum.ieee.org/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "IEEE Spectrum"
+      ]
+    },
+    {
+      "key": "engineering.com",
+      "name": "Engineering.com",
+      "urls": [
+        "https://www.engineering.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "Engineering.com"
+      ]
+    },
+    {
+      "key": "eandt.theiet.org",
+      "name": "E&T",
+      "urls": [
+        "https://eandt.theiet.org/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "E&T"
+      ]
+    },
+    {
+      "key": "nature.com",
+      "name": "Nature",
+      "urls": [
+        "https://www.nature.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "Nature"
+      ]
+    },
+    {
+      "key": "science.org",
+      "name": "Science",
+      "urls": [
+        "https://www.science.org/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "Science"
+      ]
+    },
+    {
+      "key": "quantamagazine.org",
+      "name": "Quanta Magazine",
+      "urls": [
+        "https://www.quantamagazine.org/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "Quanta Magazine"
+      ]
+    },
+    {
+      "key": "phys.org",
+      "name": "Phys.org",
+      "urls": [
+        "https://phys.org/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "Phys.org"
+      ]
+    },
+    {
+      "key": "arxiv.org",
+      "name": "arXiv",
+      "urls": [
+        "https://arxiv.org/"
+      ],
+      "preferred": [
+        "https://rss.arxiv.org/rss/cs"
+      ],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự",
+        "6. RSS quốc tế để bắt đầu tích hợp"
+      ],
+      "aliases": [
+        "arXiv",
+        "Research RSS"
+      ]
+    },
+    {
+      "key": "pubmed.ncbi.nlm.nih.gov",
+      "name": "PubMed",
+      "urls": [
+        "https://pubmed.ncbi.nlm.nih.gov/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "PubMed"
+      ]
+    },
+    {
+      "key": "plos.org",
+      "name": "PLOS",
+      "urls": [
+        "https://plos.org/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "PLOS"
+      ]
+    },
+    {
+      "key": "statnews.com",
+      "name": "STAT",
+      "urls": [
+        "https://www.statnews.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "STAT"
+      ]
+    },
+    {
+      "key": "bmj.com",
+      "name": "The BMJ",
+      "urls": [
+        "https://www.bmj.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "The BMJ"
+      ]
+    },
+    {
+      "key": "cochrane.org",
+      "name": "Cochrane",
+      "urls": [
+        "https://www.cochrane.org/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "Cochrane"
+      ]
+    },
+    {
+      "key": "carbonbrief.org",
+      "name": "Carbon Brief",
+      "urls": [
+        "https://www.carbonbrief.org/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "Carbon Brief"
+      ]
+    },
+    {
+      "key": "news.mongabay.com",
+      "name": "Mongabay",
+      "urls": [
+        "https://news.mongabay.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "Mongabay"
+      ]
+    },
+    {
+      "key": "insideclimatenews.org",
+      "name": "Inside Climate News",
+      "urls": [
+        "https://insideclimatenews.org/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "Inside Climate News"
+      ]
+    },
+    {
+      "key": "climatechangenews.com",
+      "name": "Climate Home News",
+      "urls": [
+        "https://www.climatechangenews.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "Climate Home News"
+      ]
+    },
+    {
+      "key": "bloomberg.com",
+      "name": "Bloomberg",
+      "urls": [
+        "https://www.bloomberg.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "Bloomberg"
+      ]
+    },
+    {
+      "key": "economist.com",
+      "name": "The Economist",
+      "urls": [
+        "https://www.economist.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "The Economist"
+      ]
+    },
+    {
+      "key": "brookings.edu",
+      "name": "Brookings",
+      "urls": [
+        "https://www.brookings.edu/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "Brookings"
+      ]
+    },
+    {
+      "key": "chathamhouse.org",
+      "name": "Chatham House",
+      "urls": [
+        "https://www.chathamhouse.org/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "Chatham House"
+      ]
+    },
+    {
+      "key": "carnegieendowment.org",
+      "name": "Carnegie Endowment",
+      "urls": [
+        "https://carnegieendowment.org/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "Carnegie Endowment"
+      ]
+    },
+    {
+      "key": "timeshighereducation.com",
+      "name": "Times Higher Education",
+      "urls": [
+        "https://www.timeshighereducation.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "Times Higher Education"
+      ]
+    },
+    {
+      "key": "edsurge.com",
+      "name": "EdSurge",
+      "urls": [
+        "https://www.edsurge.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "EdSurge"
+      ]
+    },
+    {
+      "key": "chalkbeat.org",
+      "name": "Chalkbeat",
+      "urls": [
+        "https://www.chalkbeat.org/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "Chalkbeat"
+      ]
+    },
+    {
+      "key": "archdaily.com",
+      "name": "ArchDaily",
+      "urls": [
+        "https://www.archdaily.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "ArchDaily"
+      ]
+    },
+    {
+      "key": "dezeen.com",
+      "name": "Dezeen",
+      "urls": [
+        "https://www.dezeen.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "Dezeen"
+      ]
+    },
+    {
+      "key": "designboom.com",
+      "name": "Designboom",
+      "urls": [
+        "https://www.designboom.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "Designboom"
+      ]
+    },
+    {
+      "key": "variety.com",
+      "name": "Variety",
+      "urls": [
+        "https://variety.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "Variety"
+      ]
+    },
+    {
+      "key": "deadline.com",
+      "name": "Deadline",
+      "urls": [
+        "https://deadline.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "Deadline"
+      ]
+    },
+    {
+      "key": "hollywoodreporter.com",
+      "name": "The Hollywood Reporter",
+      "urls": [
+        "https://www.hollywoodreporter.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "The Hollywood Reporter"
+      ]
+    },
+    {
+      "key": "billboard.com",
+      "name": "Billboard",
+      "urls": [
+        "https://www.billboard.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "Billboard"
+      ]
+    },
+    {
+      "key": "pitchfork.com",
+      "name": "Pitchfork",
+      "urls": [
+        "https://pitchfork.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "Pitchfork"
+      ]
+    },
+    {
+      "key": "nme.com",
+      "name": "NME",
+      "urls": [
+        "https://www.nme.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "NME"
+      ]
+    },
+    {
+      "key": "ign.com",
+      "name": "IGN",
+      "urls": [
+        "https://www.ign.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "IGN"
+      ],
+      "excluded": true,
+      "excluded_reason": "User excluded gaming, anime, cartoons and sports."
+    },
+    {
+      "key": "eurogamer.net",
+      "name": "Eurogamer",
+      "urls": [
+        "https://www.eurogamer.net/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "Eurogamer"
+      ],
+      "excluded": true,
+      "excluded_reason": "User excluded gaming, anime, cartoons and sports."
+    },
+    {
+      "key": "gamesindustry.biz",
+      "name": "GamesIndustry.biz",
+      "urls": [
+        "https://www.gamesindustry.biz/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "GamesIndustry.biz"
+      ],
+      "excluded": true,
+      "excluded_reason": "User excluded gaming, anime, cartoons and sports."
+    },
+    {
+      "key": "famitsu.com",
+      "name": "Famitsu",
+      "urls": [
+        "https://www.famitsu.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "Famitsu"
+      ],
+      "excluded": true,
+      "excluded_reason": "User excluded gaming, anime, cartoons and sports."
+    },
+    {
+      "key": "espn.com",
+      "name": "ESPN",
+      "urls": [
+        "https://www.espn.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "ESPN"
+      ],
+      "excluded": true,
+      "excluded_reason": "User excluded gaming, anime, cartoons and sports."
+    },
+    {
+      "key": "skysports.com",
+      "name": "Sky Sports",
+      "urls": [
+        "https://www.skysports.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "Sky Sports"
+      ],
+      "excluded": true,
+      "excluded_reason": "User excluded gaming, anime, cartoons and sports."
+    },
+    {
+      "key": "cricbuzz.com",
+      "name": "Cricbuzz",
+      "urls": [
+        "https://www.cricbuzz.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "Cricbuzz"
+      ],
+      "excluded": true,
+      "excluded_reason": "User excluded gaming, anime, cartoons and sports."
+    },
+    {
+      "key": "atlasobscura.com",
+      "name": "Atlas Obscura",
+      "urls": [
+        "https://www.atlasobscura.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "Atlas Obscura"
+      ]
+    },
+    {
+      "key": "nationalgeographic.com",
+      "name": "National Geographic",
+      "urls": [
+        "https://www.nationalgeographic.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "National Geographic"
+      ]
+    },
+    {
+      "key": "lonelyplanet.com",
+      "name": "Lonely Planet",
+      "urls": [
+        "https://www.lonelyplanet.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "Lonely Planet"
+      ]
+    },
+    {
+      "key": "vogue.com",
+      "name": "Vogue",
+      "urls": [
+        "https://www.vogue.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "Vogue"
+      ]
+    },
+    {
+      "key": "thecut.com",
+      "name": "The Cut",
+      "urls": [
+        "https://www.thecut.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "The Cut"
+      ]
+    },
+    {
+      "key": "aeon.co",
+      "name": "Aeon",
+      "urls": [
+        "https://aeon.co/"
+      ],
+      "preferred": [],
+      "sections": [
+        "3. Nguồn chuyên ngành — để FeedMerge không biến thành một ứng dụng chỉ có tin thời sự"
+      ],
+      "aliases": [
+        "Aeon"
+      ]
+    },
+    {
+      "key": "news.ycombinator.com",
+      "name": "Hacker News",
+      "urls": [
+        "https://news.ycombinator.com/"
+      ],
+      "preferred": [
+        "https://news.ycombinator.com/rss"
+      ],
+      "sections": [
+        "4. Forum, blog và cộng đồng quốc tế",
+        "6. RSS quốc tế để bắt đầu tích hợp"
+      ],
+      "aliases": [
+        "Hacker News",
+        "Front Page RSS"
+      ]
+    },
+    {
+      "key": "lobste.rs",
+      "name": "Lobsters",
+      "urls": [
+        "https://lobste.rs/"
+      ],
+      "preferred": [],
+      "sections": [
+        "4. Forum, blog và cộng đồng quốc tế"
+      ],
+      "aliases": [
+        "Lobsters"
+      ]
+    },
+    {
+      "key": "dev.to",
+      "name": "DEV Community",
+      "urls": [
+        "https://dev.to/"
+      ],
+      "preferred": [],
+      "sections": [
+        "4. Forum, blog và cộng đồng quốc tế"
+      ],
+      "aliases": [
+        "DEV Community"
+      ]
+    },
+    {
+      "key": "stackoverflow.com",
+      "name": "Stack Overflow",
+      "urls": [
+        "https://stackoverflow.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "4. Forum, blog và cộng đồng quốc tế"
+      ],
+      "aliases": [
+        "Stack Overflow"
+      ]
+    },
+    {
+      "key": "eevblog.com",
+      "name": "EEVblog Forum",
+      "urls": [
+        "https://www.eevblog.com/forum/"
+      ],
+      "preferred": [],
+      "sections": [
+        "4. Forum, blog và cộng đồng quốc tế"
+      ],
+      "aliases": [
+        "EEVblog Forum"
+      ]
+    },
+    {
+      "key": "hackaday.com",
+      "name": "Hackaday",
+      "urls": [
+        "https://hackaday.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "4. Forum, blog và cộng đồng quốc tế"
+      ],
+      "aliases": [
+        "Hackaday"
+      ]
+    },
+    {
+      "key": "forum.arduino.cc",
+      "name": "Arduino Forum",
+      "urls": [
+        "https://forum.arduino.cc/"
+      ],
+      "preferred": [],
+      "sections": [
+        "4. Forum, blog và cộng đồng quốc tế"
+      ],
+      "aliases": [
+        "Arduino Forum"
+      ]
+    },
+    {
+      "key": "indiehackers.com",
+      "name": "Indie Hackers",
+      "urls": [
+        "https://www.indiehackers.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "4. Forum, blog và cộng đồng quốc tế"
+      ],
+      "aliases": [
+        "Indie Hackers"
+      ]
+    },
+    {
+      "key": "producthunt.com",
+      "name": "Product Hunt",
+      "urls": [
+        "https://www.producthunt.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "4. Forum, blog và cộng đồng quốc tế"
+      ],
+      "aliases": [
+        "Product Hunt"
+      ]
+    },
+    {
+      "key": "reddit.com",
+      "name": "Reddit",
+      "urls": [
+        "https://www.reddit.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "4. Forum, blog và cộng đồng quốc tế"
+      ],
+      "aliases": [
+        "Reddit"
+      ],
+      "note": "Already covered by the native Reddit browser capture; no duplicate homepage source."
+    },
+    {
+      "key": "quora.com",
+      "name": "Quora",
+      "urls": [
+        "https://www.quora.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "4. Forum, blog và cộng đồng quốc tế"
+      ],
+      "aliases": [
+        "Quora"
+      ]
+    },
+    {
+      "key": "join-lemmy.org",
+      "name": "Lemmy",
+      "urls": [
+        "https://join-lemmy.org/"
+      ],
+      "preferred": [],
+      "sections": [
+        "4. Forum, blog và cộng đồng quốc tế"
+      ],
+      "aliases": [
+        "Lemmy"
+      ],
+      "note": "Directory of Lemmy software/instances, not a specific community feed. An instance must be selected."
+    },
+    {
+      "key": "zhihu.com",
+      "name": "Zhihu",
+      "urls": [
+        "https://www.zhihu.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "4. Forum, blog và cộng đồng quốc tế"
+      ],
+      "aliases": [
+        "Zhihu"
+      ]
+    },
+    {
+      "key": "v2ex.com",
+      "name": "V2EX",
+      "urls": [
+        "https://www.v2ex.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "4. Forum, blog và cộng đồng quốc tế"
+      ],
+      "aliases": [
+        "V2EX"
+      ]
+    },
+    {
+      "key": "ptt.cc",
+      "name": "PTT",
+      "urls": [
+        "https://www.ptt.cc/"
+      ],
+      "preferred": [],
+      "sections": [
+        "4. Forum, blog và cộng đồng quốc tế"
+      ],
+      "aliases": [
+        "PTT"
+      ],
+      "note": "PTT homepage lists boards, not a single news feed. A board/feed scope must be selected.",
+      "scope_kind": "board"
+    },
+    {
+      "key": "dcard.tw",
+      "name": "Dcard",
+      "urls": [
+        "https://www.dcard.tw/"
+      ],
+      "preferred": [],
+      "sections": [
+        "4. Forum, blog và cộng đồng quốc tế"
+      ],
+      "aliases": [
+        "Dcard"
+      ]
+    },
+    {
+      "key": "kaskus.co.id",
+      "name": "Kaskus",
+      "urls": [
+        "https://www.kaskus.co.id/"
+      ],
+      "preferred": [],
+      "sections": [
+        "4. Forum, blog và cộng đồng quốc tế"
+      ],
+      "aliases": [
+        "Kaskus"
+      ]
+    },
+    {
+      "key": "pantip.com",
+      "name": "Pantip",
+      "urls": [
+        "https://pantip.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "4. Forum, blog và cộng đồng quốc tế"
+      ],
+      "aliases": [
+        "Pantip"
+      ]
+    },
+    {
+      "key": "forum.lowyat.net",
+      "name": "Lowyat Forum",
+      "urls": [
+        "https://forum.lowyat.net/"
+      ],
+      "preferred": [],
+      "sections": [
+        "4. Forum, blog và cộng đồng quốc tế"
+      ],
+      "aliases": [
+        "Lowyat Forum"
+      ]
+    },
+    {
+      "key": "forums.hardwarezone.com.sg",
+      "name": "HardwareZone Forums",
+      "urls": [
+        "https://forums.hardwarezone.com.sg/"
+      ],
+      "preferred": [],
+      "sections": [
+        "4. Forum, blog và cộng đồng quốc tế"
+      ],
+      "aliases": [
+        "HardwareZone Forums"
+      ]
+    },
+    {
+      "key": "goodreads.com",
+      "name": "Goodreads",
+      "urls": [
+        "https://www.goodreads.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "4. Forum, blog và cộng đồng quốc tế"
+      ],
+      "aliases": [
+        "Goodreads"
+      ]
+    },
+    {
+      "key": "letterboxd.com",
+      "name": "Letterboxd",
+      "urls": [
+        "https://letterboxd.com/"
+      ],
+      "preferred": [],
+      "sections": [
+        "4. Forum, blog và cộng đồng quốc tế"
+      ],
+      "aliases": [
+        "Letterboxd"
+      ]
+    },
+    {
+      "key": "congbao.chinhphu.vn",
+      "name": "Công báo",
+      "urls": [
+        "https://congbao.chinhphu.vn/"
+      ],
+      "preferred": [],
+      "sections": [
+        "5. Nguồn sơ cấp: luật pháp, chính sách, thống kê và nghiên cứu"
+      ],
+      "aliases": [
+        "Công báo"
+      ]
+    },
+    {
+      "key": "asean.org",
+      "name": "ASEAN",
+      "urls": [
+        "https://asean.org/news/"
+      ],
+      "preferred": [],
+      "sections": [
+        "5. Nguồn sơ cấp: luật pháp, chính sách, thống kê và nghiên cứu"
+      ],
+      "aliases": [
+        "ASEAN"
+      ]
+    },
+    {
+      "key": "eur-lex.europa.eu",
+      "name": "EUR-Lex",
+      "urls": [
+        "https://eur-lex.europa.eu/"
+      ],
+      "preferred": [],
+      "sections": [
+        "5. Nguồn sơ cấp: luật pháp, chính sách, thống kê và nghiên cứu"
+      ],
+      "aliases": [
+        "EUR-Lex"
+      ]
+    },
+    {
+      "key": "ec.europa.eu",
+      "name": "Eurostat",
+      "urls": [
+        "https://ec.europa.eu/eurostat"
+      ],
+      "preferred": [],
+      "sections": [
+        "5. Nguồn sơ cấp: luật pháp, chính sách, thống kê và nghiên cứu"
+      ],
+      "aliases": [
+        "Eurostat"
+      ]
+    },
+    {
+      "key": "federalregister.gov",
+      "name": "Federal Register",
+      "urls": [
+        "https://www.federalregister.gov/"
+      ],
+      "preferred": [],
+      "sections": [
+        "5. Nguồn sơ cấp: luật pháp, chính sách, thống kê và nghiên cứu"
+      ],
+      "aliases": [
+        "Federal Register"
+      ]
+    },
+    {
+      "key": "govinfo.gov",
+      "name": "GovInfo",
+      "urls": [
+        "https://www.govinfo.gov/"
+      ],
+      "preferred": [],
+      "sections": [
+        "5. Nguồn sơ cấp: luật pháp, chính sách, thống kê và nghiên cứu"
+      ],
+      "aliases": [
+        "GovInfo"
+      ]
+    },
+    {
+      "key": "nist.gov",
+      "name": "NIST",
+      "urls": [
+        "https://www.nist.gov/"
+      ],
+      "preferred": [],
+      "sections": [
+        "5. Nguồn sơ cấp: luật pháp, chính sách, thống kê và nghiên cứu"
+      ],
+      "aliases": [
+        "NIST"
+      ]
+    },
+    {
+      "key": "au.int",
+      "name": "African Union",
+      "urls": [
+        "https://au.int/en/press-releases"
+      ],
+      "preferred": [],
+      "sections": [
+        "5. Nguồn sơ cấp: luật pháp, chính sách, thống kê và nghiên cứu"
+      ],
+      "aliases": [
+        "African Union"
+      ]
+    },
+    {
+      "key": "afdb.org",
+      "name": "African Development Bank",
+      "urls": [
+        "https://www.afdb.org/"
+      ],
+      "preferred": [],
+      "sections": [
+        "5. Nguồn sơ cấp: luật pháp, chính sách, thống kê và nghiên cứu"
+      ],
+      "aliases": [
+        "African Development Bank"
+      ]
+    },
+    {
+      "key": "news.un.org",
+      "name": "UN News",
+      "urls": [
+        "https://news.un.org/"
+      ],
+      "preferred": [],
+      "sections": [
+        "5. Nguồn sơ cấp: luật pháp, chính sách, thống kê và nghiên cứu"
+      ],
+      "aliases": [
+        "UN News"
+      ]
+    },
+    {
+      "key": "ungeneva.org",
+      "name": "UN Geneva",
+      "urls": [
+        "https://www.ungeneva.org/en/news-media/rss"
+      ],
+      "preferred": [],
+      "sections": [
+        "5. Nguồn sơ cấp: luật pháp, chính sách, thống kê và nghiên cứu"
+      ],
+      "aliases": [
+        "UN Geneva"
+      ]
+    },
+    {
+      "key": "who.int",
+      "name": "WHO",
+      "urls": [
+        "https://www.who.int/"
+      ],
+      "preferred": [],
+      "sections": [
+        "5. Nguồn sơ cấp: luật pháp, chính sách, thống kê và nghiên cứu"
+      ],
+      "aliases": [
+        "WHO"
+      ]
+    },
+    {
+      "key": "cdc.gov",
+      "name": "CDC",
+      "urls": [
+        "https://www.cdc.gov/"
+      ],
+      "preferred": [],
+      "sections": [
+        "5. Nguồn sơ cấp: luật pháp, chính sách, thống kê và nghiên cứu"
+      ],
+      "aliases": [
+        "CDC"
+      ]
+    },
+    {
+      "key": "worldbank.org",
+      "name": "World Bank",
+      "urls": [
+        "https://www.worldbank.org/"
+      ],
+      "preferred": [],
+      "sections": [
+        "5. Nguồn sơ cấp: luật pháp, chính sách, thống kê và nghiên cứu"
+      ],
+      "aliases": [
+        "World Bank"
+      ]
+    },
+    {
+      "key": "imf.org",
+      "name": "IMF",
+      "urls": [
+        "https://www.imf.org/"
+      ],
+      "preferred": [],
+      "sections": [
+        "5. Nguồn sơ cấp: luật pháp, chính sách, thống kê và nghiên cứu"
+      ],
+      "aliases": [
+        "IMF"
+      ]
+    },
+    {
+      "key": "oecd.org",
+      "name": "OECD",
+      "urls": [
+        "https://www.oecd.org/"
+      ],
+      "preferred": [],
+      "sections": [
+        "5. Nguồn sơ cấp: luật pháp, chính sách, thống kê và nghiên cứu"
+      ],
+      "aliases": [
+        "OECD"
+      ]
+    },
+    {
+      "key": "ilo.org",
+      "name": "ILO",
+      "urls": [
+        "https://www.ilo.org/"
+      ],
+      "preferred": [],
+      "sections": [
+        "5. Nguồn sơ cấp: luật pháp, chính sách, thống kê và nghiên cứu"
+      ],
+      "aliases": [
+        "ILO"
+      ]
+    },
+    {
+      "key": "unesco.org",
+      "name": "UNESCO",
+      "urls": [
+        "https://www.unesco.org/"
+      ],
+      "preferred": [],
+      "sections": [
+        "5. Nguồn sơ cấp: luật pháp, chính sách, thống kê và nghiên cứu"
+      ],
+      "aliases": [
+        "UNESCO"
+      ]
+    },
+    {
+      "key": "unicef.org",
+      "name": "UNICEF",
+      "urls": [
+        "https://www.unicef.org/"
+      ],
+      "preferred": [],
+      "sections": [
+        "5. Nguồn sơ cấp: luật pháp, chính sách, thống kê và nghiên cứu"
+      ],
+      "aliases": [
+        "UNICEF"
+      ]
+    },
+    {
+      "key": "iea.org",
+      "name": "IEA",
+      "urls": [
+        "https://www.iea.org/"
+      ],
+      "preferred": [],
+      "sections": [
+        "5. Nguồn sơ cấp: luật pháp, chính sách, thống kê và nghiên cứu"
+      ],
+      "aliases": [
+        "IEA"
+      ]
+    },
+    {
+      "key": "ipcc.ch",
+      "name": "IPCC",
+      "urls": [
+        "https://www.ipcc.ch/"
+      ],
+      "preferred": [],
+      "sections": [
+        "5. Nguồn sơ cấp: luật pháp, chính sách, thống kê và nghiên cứu"
+      ],
+      "aliases": [
+        "IPCC"
+      ]
+    },
+    {
+      "key": "ourworldindata.org",
+      "name": "Our World in Data",
+      "urls": [
+        "https://ourworldindata.org/"
+      ],
+      "preferred": [],
+      "sections": [
+        "5. Nguồn sơ cấp: luật pháp, chính sách, thống kê và nghiên cứu"
+      ],
+      "aliases": [
+        "Our World in Data"
+      ]
+    }
+  ]
+}

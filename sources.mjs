@@ -24,7 +24,7 @@ export function initSources(db) {
 }
 
 async function get(url, extraHeaders = {}, options = {}) {
-  return fetchSource(url, { 'user-agent': UA, accept: 'application/rss+xml, application/atom+xml, application/feed+json, application/xml;q=0.9, text/html;q=0.8, */*;q=0.5', ...extraHeaders }, options);
+  return fetchSource(url, { 'user-agent': new URL(url).hostname==='news.ycombinator.com'?'FeedMerge/0.3 (personal feed reader)':UA, accept: 'application/rss+xml, application/atom+xml, application/feed+json, application/xml;q=0.9, text/html;q=0.8, */*;q=0.5', ...extraHeaders }, options);
 }
 
 const looksLikeFeed = (text, type) => /(rss|atom|feed\+json|xml)/i.test(type) && /<(rss|feed|rdf:RDF)[\s>]/i.test(text.slice(0, 3000))
@@ -36,13 +36,20 @@ function feedTitle(text) {
   return m ? m[1].trim().replace(/\s+/g, ' ').slice(0, 120) : null;
 }
 
-function discover(html, base) {
+export function discoverFeeds(html, base) {
+  html = html.replace(/<(script|style|noscript)\b[^>]*>[\s\S]*?<\/\1>/gi, ' ');
   const out = [];
   for (const m of html.matchAll(/<link\b[^>]*>/gi)) {
     const tag = m[0];
     if (!/rel=["']?alternate/i.test(tag) || !/type=["']?application\/(rss\+xml|atom\+xml|feed\+json|json)/i.test(tag)) continue;
     const href = /href=["']([^"']+)["']/i.exec(tag)?.[1];
     if (href) try { out.push(new URL(href.replace(/&amp;/g, '&'), base).href); } catch {}
+  }
+  // Publishers often expose their feeds on an RSS directory rather than in <link> tags.
+  for(const m of html.matchAll(/<a\b[^>]*href=["']([^"']+)["'][^>]*>/gi)) {
+    const href=m[1].replace(/&amp;/g,'&');
+    if(!/(?:\.(?:rss|xml|atom)(?:[?#]|$)|\/(?:feed|rss)(?:[/?#]|$))/i.test(href))continue;
+    try{out.push(new URL(href,base).href);}catch{}
   }
   return out.filter(u => !/comments\/feed|\/comments\b/i.test(u));
 }
@@ -54,7 +61,7 @@ export function googleNewsUrl(query, locale = 'en-US') {
 }
 
 // Works out what a pasted input is: a topic, an RSSHub route, a feed, or a page with/without a feed.
-export async function resolveSource(input, { locale, rsshub = 'http://127.0.0.1:1200' } = {}) {
+export async function resolveSource(input, { locale, rsshub = 'http://127.0.0.1:1200', browserFallback = false } = {}) {
   const deadline=Date.now()+20000;
   const read=(url,options={})=>{const remaining=deadline-Date.now();if(remaining<=0)throw Error('Source discovery exceeded 20 seconds.');return get(url,{}, {...options,timeout:Math.min(10000,remaining)});};
   const s = String(input || '').trim();
@@ -71,9 +78,12 @@ export async function resolveSource(input, { locale, rsshub = 'http://127.0.0.1:
   }
   const url = /^https?:\/\//i.test(s) ? s : 'https://' + s;
   const { res, text, type } = await read(url);
-  if (!res.ok) throw new Error(`HTTP ${res.status} from ${new URL(url).host}`);
+  if (!res.ok) {
+    if(browserFallback && [401,403,405,406,419,429,503].includes(res.status))return {kind:'rendered',url:res.url||url,name:new URL(url).host+' (browser)',reason:`HTTP ${res.status}; requires a permitted browser; no capture verified.`};
+    throw new Error(`HTTP ${res.status} from ${new URL(url).host}`);
+  }
   if (looksLikeFeed(text, type)) return { kind: 'feed', url: res.url || url, name: feedTitle(text) || new URL(url).host };
-  const found = discover(text, res.url || url);
+  const found = discoverFeeds(text, res.url || url);
   const base = new URL(res.url || url);
   const candidates = [...found, ...COMMON_PATHS.map(p => new URL(p, base.origin).href)];
   for (const c of [...new Set(candidates)].slice(0, 10)) {
@@ -86,6 +96,7 @@ export async function resolveSource(input, { locale, rsshub = 'http://127.0.0.1:
   // A JavaScript app sends an empty shell that only a browser fills in: the extension reads
   // it in the background refresh window instead (see extension/background.js).
   if (links.length < 3 && appShell(text)) return { kind: 'rendered', url: res.url || url, name: ((feedTitle(text) || '').split(/ [-|–] /)[0].trim() || base.host) + ' (browser)' };
+  if(links.length<3 && browserFallback)return {kind:'rendered',url:res.url||url,name:feedTitle(text)||base.host,reason:'No usable server-rendered headlines; awaiting a permitted browser, not verified.'};
   if (links.length < 3) throw new Error('No feed found and too few article links on that page to watch it');
   return { kind: 'page', url: res.url || url, name: (feedTitle(text) || base.host) + ' (page)' };
 }
@@ -97,7 +108,7 @@ const decode = s => s.replace(/&(#x[\da-f]+|#\d+|\w+);/gi, (m, e) => e[0] === '#
 export function appShell(html) {
   const body = (/<body[^>]*>([\s\S]*)<\/body>/i.exec(html)?.[1] || '')
     .replace(/<(script|style|noscript)[\s\S]*?<\/\1>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-  return body.length < 400 && /<script\b/i.test(html) && /id=["'](__nuxt|__next|root|app|svelte)["']|<app-root|data-reactroot|ng-version/i.test(html);
+  return body.length < 400 && /<script\b/i.test(html) && /id=["'](__nuxt|__next|root|app|svelte)["']|<app-root|data-reactroot|ng-version|document\.cookie|location\.reload|checking your browser|captcha/i.test(html);
 }
 
 // Headline-like links on a page with no feed: long anchor text, same site, deeper than the home page.
@@ -127,7 +138,7 @@ export async function inspectSource(src, rules = {}, suppliedHtml) {
 }
 
 // Poll due sources; store a raw capture only when the content changed.
-export function startPoller(db, ingest, log, readConfig) {
+export function startPoller(db, ingest, log, readConfig, {schedule=true} = {}) {
   initSources(db);
   let running = false;
   const due = db.prepare("select * from sources where enabled = 1 and kind != 'rendered' and (last_fetch is null or last_fetch + interval_min * 60000 <= ?) order by last_fetch limit 8");
@@ -145,7 +156,7 @@ export function startPoller(db, ingest, log, readConfig) {
       const hash = sha(payload);
       let added = null;
       if (hash !== src.last_hash) {
-        const r = ingest({ platform: 'web', kind: src.kind === 'page' ? 'links' : 'feed', url: src.url, pageUrl: `source:${src.name}`, capturedAt: now, payload });
+        const r = await ingest({ platform: 'web', kind: src.kind === 'page' ? 'links' : 'feed', url: src.url, pageUrl: `source:${src.name}`, capturedAt: now, payload });
         added = r.parsed;
         if (r.added) log('source', src.name, `+${r.added}/${r.parsed}`);
       }
@@ -163,7 +174,6 @@ export function startPoller(db, ingest, log, readConfig) {
       for (let i = 0; i < list.length; i += 4) await Promise.all(list.slice(i, i + 4).map(pollOne));
     } finally { running = false; }
   }
-  setInterval(tick, 60_000).unref?.();
-  setTimeout(tick, 3_000).unref?.();
+  if(schedule){setInterval(tick, 60_000).unref?.();setTimeout(tick, 3_000).unref?.();}
   return { pollNow: async id => { const s = db.prepare('select * from sources where id = ?').get(id); if (s && s.kind !== 'rendered') await pollOne(s); } };
 }
