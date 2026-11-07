@@ -32,9 +32,19 @@ The extension loads Reddit (every 2 h), YouTube and X (3 h), and Instagram and T
 - read: `feed_overview`, `search_posts`, `list_labels`
 - suggest: `suggest_labels`, `propose_label`, `rename_story`
 
-Every write lands as a ✦ suggestion that you confirm or reject in the viewer, and nothing can be deleted through it. It only talks to the local FeedMerge API.
+Post-label assignments from `suggest_labels` are pending suggestions and preserve confirmed/rejected decisions. A previously unknown name creates an agent-origin taxonomy label immediately. `propose_label` and `rename_story` return previews by default; `apply=true` makes an authorized, immediate taxonomy edit, not a pending suggestion. Renames also require the preview's `expected_name` and refuse concurrent changes. Nothing can be deleted through MCP. It only talks to the local FeedMerge API.
 
 To use it from web assistants, serve it over HTTP with [Supergateway](https://github.com/supercorp-ai/supergateway) (`--config` with an `mcpServers` entry running `node mcp.mjs`). Put it behind HTTPS, for example with `tailscale funnel --bg --set-path /<long-random-secret> http://127.0.0.1:<port>`, and add `https://<host>/<secret>/feedmerge/mcp` as a connector with no authentication. The secret path is the only protection, so treat the URL like a password.
+
+Reparse now commits the rebuilt items and full-text index together, restoring saved and classifier state. A corrupt capture, parser exception or missing previously stored post refuses the rebuild and rolls it back. Raw captures and label decisions stay intact. It remains a synchronous rebuild; large stores need a staged-job implementation before exposing it as an agent bulk operation.
+
+Run `node --test test/*.test.mjs` for isolated rollback and MCP preview-contract checks. These do not modify the live database or call an AI provider.
+
+Management tools now include `get_post`, `get_ingestion_status`, `list_sources`, `update_post_labels`, `mark_posts_reviewed`, `merge_stories`, `reclassify_posts`, `save_posts`, `manage_source`, `feed_change_history` and `undo_feed_change`. Search also exposes pagination and existing multi-label, saved, context, ad and sort filters.
+
+Management edits first return a 15-minute preview. Applying its ID atomically checks the affected rows and records an idempotent receipt in the same SQLite database. Undo targets one receipt and refuses intervening edits. Marking reviewed does not confirm guessed labels. Story merge retains original IDs as aliases and refuses conflicting manual membership decisions. Reclassification queues the existing workers; manual decisions remain, but provider work is not reversible through the queue receipt. Source refresh uses the existing poller; removing a source keeps its captured posts. Undo restores source configuration, not a historical network fetch.
+
+Source discovery, redirects and later polling share bounded, DNS-pinned destination checks. Private destinations are refused except the configured trusted RSSHub origin. A redirect does not inherit permission to reach another private service. `config.json` can disable connector writes with `agent.writes=false`; public connector access still depends on protecting its existing secret URL. No account passwords or browser sessions are exposed by these tools.
 
 ## Setup
 1. Install Node.js 22.5 or newer (the server uses Node's built-in SQLite). Run `npm install`, then `node server.mjs`. To keep it running, start it at logon with a scheduled task or a startup shortcut.

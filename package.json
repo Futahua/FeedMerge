@@ -1,1 +1,1 @@
-{"name":"feedmerge","private":true,"type":"module","version":"0.2.0","dependencies":{"@modelcontextprotocol/sdk":"^1.32.2","fast-xml-parser":"^5.12.0","zod":"^4.6.7"}}
+{"name":"feedmerge","private":true,"type":"module","version":"0.2.0","scripts":{"test":"node --test test/*.test.mjs"},"dependencies":{"@modelcontextprotocol/sdk":"^1.32.2","fast-xml-parser":"^5.12.0","zod":"^4.6.7"}}

@@ -4,7 +4,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { gzipSync, gunzipSync } from 'node:zlib';
+import { gzipSync } from 'node:zlib';
 import { createHash } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { parseCapture } from './parsers.mjs';
@@ -12,10 +12,13 @@ import { startTagger } from './ai.mjs';
 import { initSources, resolveSource, startPoller } from './sources.mjs';
 import { initCategories, startCategorizer } from './categorize.mjs';
 import { initCloudflare, startCloudflare, embeddingStories, cloudflareConfig } from './cloudflare.mjs';
+import { transaction } from './sqlite-transaction.mjs';
+import { reparseCaptures } from './reparse.mjs';
+import { createManagement } from './management.mjs';
 
 const DIR = path.dirname(fileURLToPath(import.meta.url));
-const DATA = path.join(DIR, 'data');
-const CONFIG = path.join(DIR, 'config.json');
+const DATA = process.env.FEEDMERGE_DATA_DIR || path.join(DIR, 'data');
+const CONFIG = process.env.FEEDMERGE_CONFIG || path.join(DIR, 'config.json');
 fs.mkdirSync(DATA, { recursive: true });
 if (!fs.existsSync(CONFIG)) fs.copyFileSync(path.join(DIR, 'config.example.json'), CONFIG);
 
@@ -52,6 +55,7 @@ create virtual table if not exists items_fts using fts5(author, title, text);
 initSources(db);
 initCategories(db);
 initCloudflare(db);
+const management = createManagement(db);
 let poller = null;
 let categorizer = null;
 let cf = null;
@@ -70,17 +74,16 @@ const q = {
 const s = v => (v == null ? null : String(v));
 const j = v => (v == null ? null : JSON.stringify(v));
 
-function ingest(cap, keepRaw = true) {
+function ingest(cap, keepRaw = true, strict = false) {
   const t = Number(cap.capturedAt) || Date.now();
   const text = typeof cap.payload === 'string' ? cap.payload : JSON.stringify(cap.payload ?? null);
   if (keepRaw) q.rawIns.run(s(cap.platform), s(cap.kind), s(cap.url) || '', s(cap.pageUrl) || '', t, gzipSync(text));
   let items = [];
   try { items = parseCapture({ platform: cap.platform, kind: cap.kind, url: cap.url, pageUrl: cap.pageUrl, capturedAt: t, text }); }
-  catch (e) { log('parse error', cap.platform, cap.url, e.message); }
+  catch (e) { log('parse error', cap.platform, cap.url, e.message); if (strict) throw e; }
   const seen = new Set();
   let added = 0;
-  db.exec('begin');
-  try {
+  transaction(db, () => {
     for (const it of items) {
       if (seen.has(it.id)) continue;
       seen.add(it.id);
@@ -96,28 +99,13 @@ function ingest(cap, keepRaw = true) {
         if (better) { q.ftsDel.run(ex.rowid); q.ftsIns.run(ex.rowid, s(it.author) || '', s(it.title) || '', it.text); }
       }
     }
-    db.exec('commit');
-  } catch (e) { db.exec('rollback'); throw e; }
+  });
   return { parsed: seen.size, added };
 }
 
 // Rebuild every item from stored raw captures, keeping AI labels and saves.
 function reparse() {
-  const keep = db.prepare('select id, ai_topics, ai_story, ai_done, saved, cf_done from items').all();
-  db.exec('delete from items; delete from items_fts;');
-  const ids = db.prepare('select id from raw order by id').all();
-  const one = db.prepare('select * from raw where id = ?');
-  let n = 0;
-  for (const { id } of ids) {
-    const r = one.get(id);
-    ingest({ platform: r.platform, kind: r.kind, url: r.url, pageUrl: r.page_url, capturedAt: r.captured_at, payload: gunzipSync(r.body).toString('utf8') }, false);
-    n++;
-  }
-  const restore = db.prepare('update items set ai_topics = ?, ai_story = ?, ai_done = ?, saved = ?, cf_done = ? where id = ?');
-  db.exec('begin');
-  for (const k of keep) restore.run(k.ai_topics, k.ai_story, k.ai_done, k.saved, k.cf_done ?? 0, k.id);
-  db.exec('commit');
-  return { captures: n, items: db.prepare('select count(*) n from items').get().n };
+  return reparseCaptures(db, ingest);
 }
 
 function rowOut(r) {
@@ -143,7 +131,7 @@ function categories() {
   const labels = db.prepare(`select l.id, l.layer, l.name, l.description, l.keywords, l.source,
       (select count(*) from item_labels il where il.label_id = l.id and il.decided >= 0) n,
       (select count(distinct i.platform) from item_labels il join items i on i.id = il.item_id where il.label_id = l.id and il.decided >= 0) platforms
-    from labels l order by l.layer, n desc, l.name`).all();
+    from labels l where l.id not in (select from_id from story_aliases) order by l.layer, n desc, l.name`).all();
   const storyRecent = new Set(db.prepare(`select distinct il.label_id id from item_labels il join items i on i.id = il.item_id join labels l on l.id = il.label_id
     where l.layer = 'story' and i.first_seen > ?`).all(since).map(r => r.id));
   const layers = db.prepare('select id, name from layers order by sort').all().map(l => ({
@@ -151,7 +139,7 @@ function categories() {
     labels: labels.filter(x => x.layer === l.id && (l.id !== 'story' || storyRecent.has(x.id)))
       .map(x => ({ id: x.id, name: x.name, description: x.description, keywords: x.keywords ? JSON.parse(x.keywords) : null, source: x.source, n: x.n, platforms: x.platforms })),
   }));
-  const review = db.prepare(`select count(distinct item_id) n from item_labels where decided = 0 and source not in ('rule') and prob < 0.7`).get().n;
+  const review = db.prepare(`select count(distinct item_id) n from item_labels where decided = 0 and source not in ('rule') and prob < 0.7 and not exists (select 1 from post_reviews r where r.item_id=item_labels.item_id and r.reviewed_at>=item_labels.updated)`).get().n;
   return { layers, review };
 }
 
@@ -169,7 +157,7 @@ function listItems(p) {
     where.push('exists (select 1 from item_labels il where il.item_id = items.id and il.label_id = ? and il.decided >= 0)');
     args.push(Number(id));
   }
-  if (p.get('review') === '1') where.push(`exists (select 1 from item_labels il where il.item_id = items.id and il.decided = 0 and il.source != 'rule' and il.prob < 0.7)`);
+  if (p.get('review') === '1') where.push(`exists (select 1 from item_labels il where il.item_id = items.id and il.decided = 0 and il.source != 'rule' and il.prob < 0.7 and not exists (select 1 from post_reviews r where r.item_id=items.id and r.reviewed_at>=il.updated))`);
   if (p.get('saved') === '1') where.push('saved = 1');
   if (p.get('ads') !== '1') where.push("coalesce(json_extract(flags, '$.ad'), 0) = 0");
   if (p.get('q')) { where.push('rowid in (select rowid from items_fts where items_fts match ?)'); args.push(ftsQuery(p.get('q'))); }
@@ -268,6 +256,7 @@ const server = http.createServer(async (req, res) => {
     const mutating = req.method !== 'GET';
     // Writes need a custom header: plain web pages can't add it to a cross-origin request without a preflight we never allow.
     if (mutating && req.headers['x-feedmerge'] !== '1') return send(res, 403, { error: 'header' });
+    if(mutating&&req.headers['x-feedmerge-agent']==='1'&&readConfig().agent?.writes===false)return send(res,403,{error:'Agent writes are disabled by the local owner.'});
 
     if (req.method === 'POST' && u.pathname === '/ingest') {
       const cap = JSON.parse(await readBody(req));
@@ -276,6 +265,30 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, r);
     }
     if (req.method === 'GET' && u.pathname === '/api/items') return send(res, 200, listItems(u.searchParams));
+    const fullPost = /^\/api\/items\/(.+)$/.exec(u.pathname);
+    if (req.method === 'GET' && fullPost) {
+      const id = decodeURIComponent(fullPost[1]), item = db.prepare('select * from items where id=?').get(id);
+      if (!item) return send(res, 404, { error: 'Post not found' });
+      const similar = db.prepare('select a,b,sim from story_edges where a=? or b=? order by sim desc limit 50').all(id,id);
+      return send(res, 200, { ...attachLabels([rowOut(item)])[0], review: db.prepare('select * from post_reviews where item_id=?').get(id) || null, similar });
+    }
+    if (req.method === 'GET' && u.pathname === '/api/ingestion-status') return send(res, 200, {
+      observed_at: new Date().toISOString(), facets: facets(), jobs: management.jobs(cloudflareConfig(readConfig)?'cloudflare':readConfig().ai?.enabled?'chat':'rules'),
+      sources: db.prepare('select id,kind,name,enabled,last_fetch,last_ok,last_error,last_count from sources order by id').all(),
+      captures: db.prepare('select platform,count(*) captures,max(captured_at) last_capture from raw group by platform').all(),
+    });
+    if (req.method === 'GET' && u.pathname === '/api/agent/history') return send(res, 200, management.history());
+    const agentAction = /^\/api\/agent\/(preview|apply|undo)$/.exec(u.pathname);
+    if (req.method === 'POST' && agentAction) {
+      if (readConfig().agent?.writes === false) return send(res, 403, { error: 'Agent writes are disabled by the local owner.' });
+      const body = JSON.parse(await readBody(req, 100000) || '{}');
+      if(agentAction[1]==='preview'&&body.operation==='source_control'&&body.input?.action==='add'){
+        const cfg=readConfig();body.input.resolved=await resolveSource(body.input.input,{locale:body.input.locale||cfg.news?.locale,rsshub:cfg.rsshub||'http://127.0.0.1:1200'});
+      }
+      const result = agentAction[1] === 'preview' ? management.preview(body.operation, body.input || {})
+        : agentAction[1] === 'apply' ? management.apply(body.preview_id,body.operation) : management.undo(body.receipt_id, body.apply === true);
+      return send(res, 200, result);
+    }
     if (req.method === 'GET' && u.pathname === '/media') return mediaProxy(res, u.searchParams.get('u'));
     if (req.method === 'GET' && u.pathname === '/api/facets') return send(res, 200, facets());
     if (req.method === 'POST' && u.pathname === '/api/reparse') { const r = reparse(); log('reparse', JSON.stringify(r)); return send(res, 200, r); }
@@ -309,11 +322,12 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && lab) {
       const itemId = decodeURIComponent(lab[1]);
       const b = JSON.parse(await readBody(req, 1e4) || '{}');
+      if (!db.prepare('select id from items where id = ?').get(itemId)) return send(res, 404, { error: 'Post not found' });
       let labelId = Number(b.labelId);
       if (!labelId && b.layer && b.name) {
         const name = String(b.name).trim().slice(0, 80);
         labelId = db.prepare('select id from labels where layer = ? and name = ?').get(b.layer, name)?.id
-          ?? db.prepare("insert into labels(layer, name, source, created) values (?, ?, 'user', ?)").run(b.layer, name, Date.now()).lastInsertRowid;
+          ?? db.prepare('insert into labels(layer, name, source, created) values (?, ?, ?, ?)').run(b.layer, name, b.source === 'agent' ? 'agent' : 'user', Date.now()).lastInsertRowid;
       }
       if (b.source === 'agent') {
         // An assistant's suggestion: never overrides your own decision on that label.
@@ -332,6 +346,9 @@ const server = http.createServer(async (req, res) => {
       const kw = Array.isArray(b.keywords) ? b.keywords.map(String).filter(Boolean).slice(0, 100) : null;
       const source = b.source === 'agent' ? 'agent' : 'user';
       if (b.id) {
+        const existing = db.prepare('select name from labels where id = ?').get(Number(b.id));
+        if (!existing) return send(res, 404, { error: 'Label not found' });
+        if (b.expectedName !== undefined && existing.name !== b.expectedName) return send(res, 409, { error: 'Label changed since preview' });
         // A renamed label is pinned (source user/agent) so regrouping keeps its name.
         db.prepare(`update labels set name = coalesce(?, name), description = coalesce(?, description), keywords = case when ? then ? else keywords end,
           source = case when source in ('mock', 'ai') and ? is not null then ? else source end where id = ?`)
@@ -365,7 +382,7 @@ const server = http.createServer(async (req, res) => {
     send(res, 404, { error: 'not found' });
   } catch (e) {
     log('error', req.method, req.url, e.message);
-    send(res, 500, { error: e.message });
+    send(res, e.status || 500, { error: e.message });
   }
 });
 

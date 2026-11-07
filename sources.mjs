@@ -1,6 +1,7 @@
 // Web sources (news sites, blogs, topic searches, RSSHub routes, plain pages) polled by the
 // server itself, so they stay fresh without any browser open.
 import { createHash } from 'node:crypto';
+import { fetchSource } from './source-fetch.mjs';
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Safari/537.36 FeedMerge/0.2';
 const COMMON_PATHS = ['/feed', '/rss', '/rss.xml', '/feed.xml', '/atom.xml', '/index.xml', '/feeds/posts/default', '/?feed=rss2'];
@@ -18,10 +19,8 @@ export function initSources(db) {
     created integer, last_fetch integer, last_ok integer, last_error text, etag text, last_modified text, last_hash text, last_count integer)`);
 }
 
-async function get(url, extraHeaders = {}) {
-  const res = await fetch(url, { headers: { 'user-agent': UA, accept: 'application/rss+xml, application/atom+xml, application/feed+json, application/xml;q=0.9, text/html;q=0.8, */*;q=0.5', ...extraHeaders }, redirect: 'follow', signal: AbortSignal.timeout(30_000) });
-  const text = res.status === 304 ? '' : await res.text();
-  return { res, text, type: res.headers.get('content-type') || '' };
+async function get(url, extraHeaders = {}, options = {}) {
+  return fetchSource(url, { 'user-agent': UA, accept: 'application/rss+xml, application/atom+xml, application/feed+json, application/xml;q=0.9, text/html;q=0.8, */*;q=0.5', ...extraHeaders }, options);
 }
 
 const looksLikeFeed = (text, type) => /(rss|atom|feed\+json|xml)/i.test(type) && /<(rss|feed|rdf:RDF)[\s>]/i.test(text.slice(0, 3000))
@@ -52,12 +51,14 @@ export function googleNewsUrl(query, locale = 'en-US') {
 
 // Works out what a pasted input is: a topic, an RSSHub route, a feed, or a page with/without a feed.
 export async function resolveSource(input, { locale, rsshub = 'http://127.0.0.1:1200' } = {}) {
+  const deadline=Date.now()+20000;
+  const read=(url,options={})=>{const remaining=deadline-Date.now();if(remaining<=0)throw Error('Source discovery exceeded 20 seconds.');return get(url,{}, {...options,timeout:Math.min(10000,remaining)});};
   const s = String(input || '').trim();
   if (!s) throw new Error('Empty input');
   if (s.startsWith('/') || /^rsshub:/i.test(s)) {
     const route = s.replace(/^rsshub:/i, '').replace(/^\/?/, '/');
     const url = rsshub.replace(/\/+$/, '') + route;
-    const { res, text } = await get(url);
+    const { res, text } = await read(url, { trustedOrigin: rsshub });
     if (!res.ok || !looksLikeFeed(text, 'xml')) throw new Error(`RSSHub route failed (HTTP ${res.status}). Is RSSHub running, and is the route right?`);
     return { kind: 'feed', url, name: feedTitle(text) || route };
   }
@@ -65,7 +66,7 @@ export async function resolveSource(input, { locale, rsshub = 'http://127.0.0.1:
     return { kind: 'feed', url: googleNewsUrl(s, locale), name: `News: ${s}` };
   }
   const url = /^https?:\/\//i.test(s) ? s : 'https://' + s;
-  const { res, text, type } = await get(url);
+  const { res, text, type } = await read(url);
   if (!res.ok) throw new Error(`HTTP ${res.status} from ${new URL(url).host}`);
   if (looksLikeFeed(text, type)) return { kind: 'feed', url: res.url || url, name: feedTitle(text) || new URL(url).host };
   const found = discover(text, res.url || url);
@@ -73,7 +74,7 @@ export async function resolveSource(input, { locale, rsshub = 'http://127.0.0.1:
   const candidates = [...found, ...COMMON_PATHS.map(p => new URL(p, base.origin).href)];
   for (const c of [...new Set(candidates)].slice(0, 10)) {
     try {
-      const f = await get(c);
+      const f = await read(c);
       if (f.res.ok && looksLikeFeed(f.text, f.type)) return { kind: 'feed', url: f.res.url || c, name: feedTitle(f.text) || base.host };
     } catch {}
   }
@@ -116,7 +117,8 @@ export function startPoller(db, ingest, log, readConfig) {
     const now = Date.now();
     try {
       const headers = src.kind === 'feed' ? { ...(src.etag ? { 'if-none-match': src.etag } : {}), ...(src.last_modified ? { 'if-modified-since': src.last_modified } : {}) } : {};
-      const { res, text } = await get(src.url, headers);
+      const rsshub = new URL(readConfig().rsshub || 'http://127.0.0.1:1200').origin;
+      const { res, text } = await get(src.url, headers, { trustedOrigin: rsshub });
       if (res.status === 304) return mark.run(now, now, null, null, null, null, null, src.id);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const payload = src.kind === 'page' ? JSON.stringify(extractLinks(text, res.url || src.url)) : text;
