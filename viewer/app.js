@@ -3,7 +3,7 @@ const { esc, ago, short } = window.Native;
 const NAMES = { web: 'Web', x: 'X', youtube: 'YouTube', tiktok: 'TikTok', instagram: 'Instagram', threads: 'Threads', bluesky: 'Bluesky', reddit: 'Reddit' };
 const POST = (url, body) => fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', 'x-feedmerge': '1' }, body: JSON.stringify(body || {}) });
 
-const state = { platforms: new Set(), context: '', labels: new Map(), q: '', sort: 'captured', saved: false, ads: false, review: false, offset: 0, done: false, loading: false, newest: 0 };
+const state = { platforms: new Set(), context: '', labels: new Map(), q: '', sort: 'captured', saved: false, ads: false, review: false, offset: 0, done: false, loading: false };
 let shuffleSeed = 1 + Math.floor(Math.random() * 1000000000);
 const items = new Map();
 let cats = { layers: [], review: 0 };
@@ -70,11 +70,10 @@ function renderCard(it) {
 async function load(reset) {
   if (state.loading || (state.done && !reset)) return;
   state.loading = true;
-  if (reset) { state.offset = 0; state.done = false; $('#feed').innerHTML = ''; $('#fresh').hidden = true; items.clear(); }
+  if (reset) { state.offset = 0; state.done = false; $('#feed').innerHTML = ''; items.clear(); }
   $('#more').textContent = 'Loading…';
   try {
     let list = await (await fetch('/api/items?' + params({ limit: 40, offset: state.offset }))).json();
-    if (reset) state.newest = list[0]?.firstSeen || Date.now();
     state.offset += list.length;
     state.done = list.length < 40;
     if (state.sort === 'balanced') list = balance(list);
@@ -362,19 +361,10 @@ addEventListener('wheel', e => {
   cardW = Math.round(Math.min(CARD_MAX, Math.max(CARD_MIN, cardW * Math.exp(-e.deltaY * 0.0015))));
   if (!zoomFrame) zoomFrame = requestAnimationFrame(zoomNow);
 }, { passive: false });
-$('#fresh').addEventListener('click', () => { window.scrollTo(0, 0); refresh(); });
 document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => { b.closest('dialog').close(); refresh(); }));
 
 new IntersectionObserver(es => { if (es.some(x => x.isIntersecting)) load(false); }, { rootMargin: '1200px' }).observe($('#more'));
 
-setInterval(async () => {
-  if (document.hidden || state.sort === 'published' || state.sort === 'repeated') return;
-  try {
-    const list = await (await fetch('/api/items?' + params({ limit: 200, since: state.newest }))).json();
-    $('#fresh').hidden = !list.length;
-    $('#fresh').textContent = `${list.length}${list.length === 200 ? '+' : ''} new posts — show`;
-  } catch {}
-}, 20000);
 setInterval(() => { if (!document.hidden) facets(); }, 60000);
 
 // ---------- Web sources dialog ----------
