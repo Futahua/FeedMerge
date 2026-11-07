@@ -6,7 +6,7 @@ import { parseCapture } from '../parsers.mjs';
 
 const page = (title, extra = {}) => ({ ns: 0, title, index: 1, fullurl: `https://en.wikipedia.org/wiki/${title.replace(/ /g, '_')}`, description: 'a thing', extract: `${title} is described here at enough length to be a real article intro for the card. `.repeat(2), thumbnail: { source: `https://upload.wikimedia.org/${title}.jpg` }, ...extra });
 
-test('related pages from feed subjects and random quality articles, never repeated', async () => {
+test('related pages from feed subjects and random quality articles, with related repeats after 60 days', async () => {
   const db = new DatabaseSync(':memory:');
   db.exec(`create table items(id text, platform text, title text, text text, flags text, last_seen int, saved int default 0, seen_count int default 1);
     create table item_labels(item_id text, label_id int, decided int); create table labels(id int, layer text, name text);
@@ -44,4 +44,37 @@ test('related pages from feed subjects and random quality articles, never repeat
   await w.run();
   const later = ingested.find(c => c.pageUrl === 'source:Wikipedia · for you');
   assert.equal(parseCapture({ ...later, text: later.payload })[0].title, 'Autodesk Revit');
+});
+
+
+test('random pages stay excluded for a year and selection uses the unseen pool', async () => {
+  const db = new DatabaseSync(':memory:');
+  db.exec(`create table items(id text, platform text, title text, text text, flags text, last_seen int, saved int default 0, seen_count int default 1);
+    create table item_labels(item_id text, label_id int, decided int); create table labels(id int, layer text, name text);
+    create table meta(k text primary key, v text);`);
+  const oldFetch = globalThis.fetch, oldRandom = Math.random;
+  const ingested = [];
+  let members = [{title:'Recent'}, {title:'Expired'}];
+  globalThis.fetch = async u => {
+    const q = new URL(u).searchParams;
+    return {ok:true,json:async()=>q.get('list')==='categorymembers' ? {query:{categorymembers:members}} : {query:{pages:[page(q.get('titles'))]}}};
+  };
+  Math.random = () => .49; // vi, and index 0 of one eligible page, not 0/1 of two raw members
+  try {
+    const w = startWikipedia(db, cap => {ingested.push(cap);return {added:1,parsed:1}},()=>{},()=>({}));
+    const mark = db.prepare('insert into wiki_seen values (?, ?, ?, ?, ?)');
+    mark.run('vi','Recent','random',null,Date.now()-364*864e5);
+    mark.run('vi','Expired','random',null,Date.now()-366*864e5);
+    await w.run();
+    assert.equal(ingested.length,1);
+    assert.equal(JSON.parse(ingested[0].payload).items[0].title,'Expired');
+    assert(db.prepare("select shown_at from wiki_seen where title='Expired'").get().shown_at > Date.now()-60000);
+    ingested.length=0;
+    await w.run();assert.equal(ingested.length,0); // neither recent nor just-repeated page returns
+    members=[{title:'Recent'},{title:'Expired'},{title:'Available'}];
+    Math.random=()=>.9; // en: seed matching seen records to leave one candidate late in the list
+    mark.run('en','Recent','random',null,Date.now());mark.run('en','Expired','random',null,Date.now());
+    await w.run();
+    assert.equal(JSON.parse(ingested[0].payload).items[0].title,'Available');
+  } finally {globalThis.fetch=oldFetch;Math.random=oldRandom;}
 });

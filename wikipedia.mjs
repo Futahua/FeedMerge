@@ -114,7 +114,8 @@ export function startWikipedia(db, ingest, log, readConfig, ai) {
       const prefix = L[Math.floor(Math.random() * L.length)] + 'AEIOUNRH'[Math.floor(Math.random() * 8)];
       try {
         const members = (await api(lang, { list: 'categorymembers', cmtitle: `Category:${cat}`, cmnamespace: '0', cmlimit: '10', cmstartsortkeyprefix: prefix }, readConfig)).query?.categorymembers || [];
-        const pick = members.filter(m => !seen.get(lang, m.title))[Math.floor(Math.random() * Math.min(5, members.length))];
+        const available = members.filter(m => !seen.get(lang, m.title));
+        const pick = available[Math.floor(Math.random() * Math.min(5, available.length))];
         if (!pick) continue;
         const [p] = await pages(lang, { titles: pick.title }, readConfig);
         if (!p) continue;
