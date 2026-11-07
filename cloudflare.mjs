@@ -48,7 +48,10 @@ export function startCloudflare(db, readConfig, log, hooks = {}) {
   }
 
   // ---------- Embeddings + story edges ----------
-  const needEmbed = db.prepare(`select i.id, i.title, i.text from items i left join embeddings e on e.item_id = i.id where e.item_id is null order by i.first_seen desc limit 50`);
+  // Only posts a feed showed in the last 2 days use the AI budget: the feed is about now.
+  const RECENT = 2 * 864e5;
+  const needEmbedQ = db.prepare(`select i.id, i.title, i.text from items i left join embeddings e on e.item_id = i.id where e.item_id is null and i.last_seen > ? order by i.first_seen desc limit 50`);
+  const needEmbed = { all: () => needEmbedQ.all(Date.now() - RECENT), get: () => needEmbedQ.get(Date.now() - RECENT) };
   const putEmbed = db.prepare('insert or replace into embeddings(item_id, vec, created) values (?, ?, ?)');
   const windowVecs = db.prepare(`select e.item_id id, e.vec, i.author, i.platform, i.title, i.text from embeddings e join items i on i.id = e.item_id
     where e.vec is not null and i.first_seen > ? and coalesce(json_extract(i.flags, '$.ad'), 0) = 0`);
@@ -100,7 +103,7 @@ export function startCloudflare(db, readConfig, log, hooks = {}) {
 
   // ---------- Clef Flash categories ----------
   const needDecide = db.prepare(`select id, platform, author, author_name, title, text, context from items
-    where cf_done < ? and coalesce(json_extract(flags, '$.ad'), 0) = 0 order by first_seen desc limit 1`);
+    where cf_done < ? and last_seen > ? and coalesce(json_extract(flags, '$.ad'), 0) = 0 order by first_seen desc limit 1`);
   const markDone = db.prepare('update items set cf_done = ? where id = ?');
 
   function questionsFor() {
@@ -158,7 +161,7 @@ export function startCloudflare(db, readConfig, log, hooks = {}) {
       if (cfg.categorize !== false) {
         const questions = questionsFor();
         for (let i = 0; i < 40 && usage.get() < cap; i++) {
-          const it = needDecide.get(CF_VERSION);
+          const it = needDecide.get(CF_VERSION, Date.now() - RECENT);
           if (!it) break;
           // Nearly empty posts (emoji-only captions, bare links) aren't worth a call; rules keep their labels.
           if (`${it.title || ''} ${it.text || ''}`.replace(/https?:\/\/\S+|[\s\p{P}\p{S}]+/gu, '').length < 8) { markDone.run(CF_VERSION, it.id); continue; }

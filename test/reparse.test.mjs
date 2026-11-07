@@ -8,7 +8,7 @@ import { transaction } from '../sqlite-transaction.mjs';
 function fixture() {
   const db = new DatabaseSync(':memory:');
   db.exec(`create table items(id text primary key, text text, ai_topics text, ai_story text, ai_done int, saved int, cf_done int, cat_done int);
-    create virtual table items_fts using fts5(text);
+    create virtual table items_fts using fts5(author, title, text);
     create table raw(id integer primary key, platform text, kind text, url text, page_url text, captured_at int, body blob);
     create table item_labels(item_id text, label_id int, decided int);
     insert into items values('a','original','topic','story',1,1,2,3);
@@ -38,7 +38,7 @@ test('corrupt later capture rolls back prior rebuild, FTS and saved classificati
 test('successful nested rebuild commits both indexes and retains saved/classifier state', () => {
   const { db, ingest } = fixture();
   try {
-    assert.deepEqual(reparseCaptures(db, ingest), { captures: 1, items: 1 });
+    assert.deepEqual(reparseCaptures(db, ingest), { captures: 1, items: 1, preserved: 0 });
     const item = db.prepare('select * from items').get();
     assert.equal(item.text, 'replacement');
     assert.equal(item.saved, 1);
@@ -49,11 +49,12 @@ test('successful nested rebuild commits both indexes and retains saved/classifie
   } finally { db.close(); }
 });
 
-test('parser omissions cannot silently remove existing posts', () => {
+test('posts without remaining captures are kept unchanged and searchable', () => {
   const { db } = fixture();
   try {
-    assert.throws(() => reparseCaptures(db, () => {}), /would remove 1 existing posts/);
-    assert.equal(db.prepare('select saved from items').get().saved, 1);
+    const before = db.prepare('select * from items').get();
+    assert.deepEqual(reparseCaptures(db, () => {}), { captures: 1, items: 1, preserved: 1 });
+    assert.deepEqual(db.prepare('select * from items').get(), before);
     assert.equal(db.prepare("select count(*) n from items_fts where items_fts match 'original'").get().n, 1);
   } finally { db.close(); }
 });

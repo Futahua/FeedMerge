@@ -59,6 +59,21 @@ Edit `config.json`. It's re-read every cycle, so there's no need to restart.
 
 Batches of 25 posts, one call per 20 s by default. The AI only adds labels; the feed itself never depends on it.
 
+## Staying current (retention)
+
+FeedMerge is for keeping up, not for hoarding. Hourly (and 30 s after start) `retention.mjs`:
+
+- deletes a post nobody engaged with once no feed has shown it for **7 days** (counted from when a feed last
+  showed it, so posts the algorithms keep pushing stay while they are current);
+- keeps the **library** forever: saved posts, posts in a collection, posts with a label you confirmed (✓);
+- deletes ads after **1 day** and raw captures after **3 days** (reparse rebuilds the posts those cover and
+  keeps older posts unchanged).
+
+A deleted post leaves nothing behind: labels, embedding, story links, review marks and its search entry go too.
+Change the windows with `POST /api/retention {"days": 14, "rawDays": 3, "adDays": 1}`; `GET /api/retention`
+shows the settings and the last run. AI labeling and embeddings only spend budget on posts shown in the last
+2 days. The viewer marks posts that arrived since your last visit (a visit ends after 30 minutes away).
+
 ## Backup
 
 The scheduled task "FeedMerge backup" runs `scripts/backup.mjs` hourly (and at logon). It takes a consistent

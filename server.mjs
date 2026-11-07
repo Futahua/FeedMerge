@@ -14,6 +14,7 @@ import { initCategories, startCategorizer } from './categorize.mjs';
 import { initCloudflare, startCloudflare, embeddingStories, cloudflareConfig } from './cloudflare.mjs';
 import { transaction } from './sqlite-transaction.mjs';
 import { reparseCaptures } from './reparse.mjs';
+import { expire, retentionSettings } from './retention.mjs';
 import { createManagement } from './management.mjs';
 
 const DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -179,7 +180,7 @@ function facets() {
       enabled: !!(cfg.enabled && (cfg.apiKey || process.env.FEEDMERGE_AI_KEY)) || !!cf?.active(),
       provider: cf?.active() ? 'cloudflare' : cfg.enabled ? 'chat' : 'mock',
       usage: cf?.active() ? cf.usage() : null,
-      pending: db.prepare("select count(*) n from items where cf_done = 0 and coalesce(json_extract(flags, '$.ad'), 0) = 0").get().n,
+      pending: db.prepare("select count(*) n from items where cf_done = 0 and last_seen > ? and coalesce(json_extract(flags, '$.ad'), 0) = 0").get(Date.now() - 2 * 864e5).n,
       embedded: db.prepare('select count(*) n from embeddings').get().n,
     },
     total: db.prepare('select count(*) n, max(first_seen) last from items').get(),
@@ -231,6 +232,13 @@ function pruneMedia() {
   } catch (e) { log('media prune', e.message); }
 }
 setInterval(pruneMedia, 3600e3).unref();
+
+// Retention: the feed stays current; see retention.mjs.
+function runRetention() {
+  try { const r = expire(db); if (r.posts || r.raw) log('retention', JSON.stringify(r)); } catch (e) { log('retention failed', e.message); }
+}
+setTimeout(runRetention, 30e3).unref();
+setInterval(runRetention, 3600e3).unref();
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml' };
 
@@ -292,6 +300,19 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'GET' && u.pathname === '/media') return mediaProxy(res, u.searchParams.get('u'));
     if (req.method === 'GET' && u.pathname === '/api/facets') return send(res, 200, facets());
+    if (req.method === 'GET' && u.pathname === '/api/retention') {
+      let last = null; try { last = JSON.parse(db.prepare("select v from meta where k = 'retention_last'").get()?.v || 'null'); } catch {}
+      return send(res, 200, { ...retentionSettings(db), last });
+    }
+    if (req.method === 'POST' && u.pathname === '/api/retention') {
+      const b = JSON.parse(await readBody(req, 1e4) || '{}');
+      for (const [k, key] of [['days', 'retention_days'], ['rawDays', 'retention_raw_days'], ['adDays', 'retention_ad_days']]) {
+        if (b[k] === undefined) continue;
+        const v = Number(b[k]); if (!Number.isFinite(v) || v <= 0 || v > 3650) return send(res, 400, { error: `${k} must be 1-3650 days` });
+        db.prepare('insert into meta(k, v) values (?, ?) on conflict(k) do update set v = excluded.v').run(key, String(v));
+      }
+      return send(res, 200, retentionSettings(db));
+    }
     if (req.method === 'POST' && u.pathname === '/api/reparse') { const r = reparse(); log('reparse', JSON.stringify(r)); return send(res, 200, r); }
     if (req.method === 'GET' && u.pathname === '/api/sources') {
       return send(res, 200, db.prepare(`select s.*, (select count(*) from items where platform = 'web' and context = s.name) items from sources s order by s.created desc`).all());

@@ -7,6 +7,19 @@ const state = { platforms: new Set(), context: '', labels: new Map(), q: '', sor
 const items = new Map();
 let cats = { layers: [], review: 0 };
 try { const s = JSON.parse(localStorage.getItem('fm-view') || '{}'); if (s.sort) state.sort = s.sort; if (s.platforms) state.platforms = new Set(s.platforms); } catch {}
+// "New" marks posts that arrived since your previous visit. A visit ends after 30 minutes
+// away, so reloading or switching tabs keeps the same starting point.
+const VISIT_GAP = 30 * 60e3;
+let lastVisit = 0;
+try {
+  const v = JSON.parse(localStorage.getItem('fm-visit') || '{}');
+  lastVisit = Date.now() - (v.active || 0) > VISIT_GAP ? (v.active || 0) : (v.since || 0);
+  localStorage.setItem('fm-visit', JSON.stringify({ since: lastVisit, active: Date.now() }));
+} catch {}
+const touch = () => { try { localStorage.setItem('fm-visit', JSON.stringify({ since: lastVisit, active: Date.now() })); } catch {} };
+setInterval(() => { if (document.visibilityState === 'visible') touch(); }, 60e3);
+document.addEventListener('visibilitychange', touch);
+addEventListener('pagehide', touch);
 const remember = () => { try { localStorage.setItem('fm-view', JSON.stringify({ sort: state.sort, platforms: [...state.platforms] })); } catch {} };
 
 function params(extra = {}) {
@@ -39,7 +52,7 @@ function strip(it) {
       <button class="nm" data-filter="${l.id}" data-name="${esc(l.name)}" data-layer="${esc(l.layer)}">${l.source === 'agent' && l.decided !== 1 ? '<span title="Suggested by an assistant">✦ </span>' : ''}${esc(l.name)}${l.decided !== 1 && l.source !== 'rule' ? `<small>${Math.round(l.prob * 100)}%</small>` : ''}</button>
       <button class="ok" data-decide="1" title="Correct">✓</button><button class="no" data-decide="-1" title="Wrong">✕</button></span>`).join('');
   return `<div class="fm-strip">${labs}<button class="add-lab" data-add title="Add a label">+</button>
-    <span class="meta"><span title="${esc(NAMES[it.platform])} · ${esc(it.context || '')}">${esc(NAMES[it.platform] || it.platform)} · ${esc(it.context || '')}</span>
+    <span class="meta">${lastVisit && it.firstSeen > lastVisit ? '<span class="new-badge" title="Arrived since your last visit">New</span>' : ''}<span title="${esc(NAMES[it.platform])} · ${esc(it.context || '')}">${esc(NAMES[it.platform] || it.platform)} · ${esc(it.context || '')}</span>
     ${it.seenCount > 1 ? `<span title="times the platform showed this to you">shown ${it.seenCount}×</span>` : ''}
     <a href="${esc(it.url)}" target="_blank" rel="noopener noreferrer">Open</a>
     <button class="star ${it.saved ? 'on' : ''}" data-save title="Save">${it.saved ? '★' : '☆'}</button></span></div>`;
@@ -65,6 +78,13 @@ async function load(reset) {
     tmp.innerHTML = list.map(renderCard).join('');
     window.Native.mount(tmp);
     $('#feed').append(...tmp.children);
+    if (reset && lastVisit && state.offset === list.length) {
+      const fresh = await (await fetch('/api/items?' + params({ limit: 500, since: lastVisit }))).json().catch(() => []);
+      const note = document.createElement('div');
+      note.className = 'since-visit';
+      note.textContent = fresh.length ? `${fresh.length >= 500 ? '500+' : fresh.length} new since your last visit` : 'Nothing new since your last visit';
+      $('#feed').prepend(note);
+    }
     if (reset && !list.length) $('#feed').innerHTML = `<div class="empty">Nothing matches. Clear a filter, or let the extension and your sources bring in more posts.</div>`;
     $('#more').textContent = state.done ? (state.offset ? 'That’s everything.' : '') : '';
   } catch (e) { $('#more').textContent = 'Server not reachable.'; }
