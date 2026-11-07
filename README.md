@@ -67,13 +67,13 @@ by `tailscale serve --bg --https=8447 http://127.0.0.1:4747`. The server only an
 `x-feedmerge` header. Turn it off with `tailscale serve --https=8447 off`.
 
 The viewer has no top bar: name, search, order, Categories, Sources and every filter live in a sidebar drawer
-on every screen. ☰ opens it; ✕, a tap outside, Escape or Back close it. Posts sit in a packed grid that follows Flow's smart box rule: a card takes the shape
-of what it shows (wide media spans 2–3 columns, tall video and text stay one), media is never taller than 70% of
-the window, and tiles pack densely so gaps fill across and down. On a PC, Ctrl+scroll zooms the grid; cards
-animate to their new size and place. Cards keep balanced proportions: one
-much taller than wide (over 1.6×) widens a column at a time, up to three, while that helps. Label chips are compact
-(format chips are left to the sidebar; ✓/✕ show on a chip under the pointer), and with a mouse the footer, "+"
-and "View … here" appear only while a card is hovered. General web pages show only the site icon, the shorter of the site's name
+on every screen. ☰ opens it; ✕, a tap outside, Escape or Back close it. Posts sit in a packed grid. One rule sizes every card: it is measured at 1, 2 and 3 columns and keeps the
+width whose drawn shape is closest to a balanced card (about 4:5), but only takes a wider width if that really
+reshapes the card and doesn't add empty space around a picture (so reels stay narrow and long text widens).
+Media is never taller than 70% of the window, and tiles pack densely so gaps fill across and down. On a PC,
+Ctrl+scroll zooms the grid; cards animate to their new size and place. Label chips are compact (format chips are
+left to the sidebar; ✓/✕ show on a chip under the pointer), and with a mouse the footer, "+" and "View … here"
+appear only while a card is hovered. General web pages show only the site icon, the shorter of the site's name
 or address, and the title.
 
 ## Staying current (retention)

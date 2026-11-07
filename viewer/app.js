@@ -228,22 +228,54 @@ $('#menu').setAttribute('aria-expanded', 'false');
 // animates from where it was to where it lands.
 const feedEl = $('#feed'), GAP = 14, ROW = 4;
 const colsNow = () => getComputedStyle(feedEl).gridTemplateColumns.split(' ').filter(Boolean).length;
-function aspectOf(it, card) {
-  const m = it?.media?.[0];
-  if (m?.w && m?.h) return m.w / m.h;
-  const media = card.querySelector('.n-body video, .n-body img:not(.av):not(.fav)');
-  if (media?.videoWidth) return media.videoWidth / media.videoHeight;
-  if (media?.naturalWidth) return media.naturalWidth / media.naturalHeight;
-  if (it?.platform === 'tiktok') return 9 / 16;
-  if (it?.platform === 'youtube') return 16 / 9;
+// One rule for every card: try it at 1, 2 and 3 columns and keep the width whose drawn
+// shape is closest to a balanced card (about 4:5). A wider option is only taken when it
+// really reshapes the card: if the shape barely changes (a reel's fixed 9:16 frame) or it
+// only adds empty space around a picture (letterboxing), the narrower width stays.
+const TARGET = 1.25; // height / width
+// Videos load only on play, so their true shape comes from the recorded size, or 9:16 for
+// short-form video (reels, TikToks, Shorts) when none was recorded.
+function knownShape(el) {
+  const it = items.get(el.dataset.id), m = it?.media?.find(x => x.w && x.h);
+  if (m) return [m.w, m.h];
+  if (it?.media?.some(x => x.type === 'video') && /instagram|tiktok/.test(it.platform)) return [9, 16];
+  if (it?.platform === 'youtube' && /shorts/.test(it.url || '')) return [9, 16];
   return null;
 }
-function spanFor(card, cols) {
-  const it = items.get(card.dataset.id);
-  if (!it?.media?.length || cols < 3) return 1;
-  const a = aspectOf(it, card);
-  if (!a || a < 1.4) return 1;
-  return a >= 2.1 && cols >= 4 ? 3 : 2;
+function letterbox(el) {
+  let empty = 0, total = 0;
+  const shape = knownShape(el);
+  for (const m of el.querySelectorAll('.n-body img:not(.av):not(.fav), .n-body video')) {
+    const fallback = m.tagName === 'VIDEO' || !m.naturalWidth ? shape : null;
+    const nw = m.naturalWidth || m.videoWidth || fallback?.[0], nh = m.naturalHeight || m.videoHeight || fallback?.[1];
+    const w = m.clientWidth, h = m.clientHeight;
+    if (!nw || !nh || !w || !h) continue;
+    const scale = Math.min(w / nw, h / nh);
+    empty += w * h - nw * scale * nh * scale;
+    total += w * h;
+  }
+  // Fixed-shape frames (reels, TikToks) centre themselves: the card width beside them is empty too.
+  const cw = el.clientWidth;
+  for (const f of el.querySelectorAll('.n-body .vt')) {
+    const fw = f.offsetWidth, fh = f.offsetHeight;
+    if (!fw || !fh || fw >= cw) continue;
+    empty += (cw - fw) * fh;
+    total += (cw - fw) * fh;
+  }
+  return total ? empty / total : 0;
+}
+function chooseSpan(el, cols) {
+  const limit = Math.min(cols, 3);
+  let best = 1, bestScore = Infinity, prev = null;
+  for (let span = 1; span <= limit; span++) {
+    el.style.gridColumnEnd = `span ${span}`;
+    const ratio = el.offsetHeight / Math.max(1, el.offsetWidth), empty = letterbox(el);
+    if (prev && (ratio > prev.ratio * 0.92 || (empty > 0.1 && empty > prev.empty + 0.02))) break;
+    const score = Math.abs(Math.log(ratio / TARGET)) + (span - 1) * 0.08; // ties stay narrow
+    if (score < bestScore) { bestScore = score; best = span; }
+    prev = { ratio, empty };
+  }
+  el.style.gridColumnEnd = `span ${best}`;
 }
 function fitRows(el) {
   // Layout height: ignores the zoom animation's scale, which would give a wrong span.
@@ -251,28 +283,9 @@ function fitRows(el) {
   if (h) el.style.gridRowEnd = `span ${Math.ceil((h + GAP) / ROW)}`;
 }
 const rowWatch = new ResizeObserver(entries => { for (const e of entries) fitRows(e.target); });
-// Harmonic proportions: a card much taller than it is wide (a long text post in one narrow
-// column) widens a column at a time, up to three, while that actually makes it less tall.
-const MAX_TALL = 1.6;
-function balanceCard(el, cols) {
-  // Only text cards: media is height-capped, so widening a photo or video card would just
-  // add empty space around it.
-  if (el.querySelector('.n-body video, .n-body .mgrid, .n-body .vwrap, .n-body img:not(.av):not(.fav)')) return;
-  let span = Number(el.style.gridColumnEnd.split(' ')[1]) || 1;
-  const limit = Math.min(cols, 3);
-  let ratio = el.offsetHeight / Math.max(1, el.offsetWidth);
-  while (ratio > MAX_TALL && span < limit) {
-    el.style.gridColumnEnd = `span ${span + 1}`;
-    const next = el.offsetHeight / Math.max(1, el.offsetWidth);
-    if (next >= ratio - 0.05) { el.style.gridColumnEnd = `span ${span}`; break; }
-    span++;
-    ratio = next;
-  }
-}
 function layoutCards(cards = feedEl.children) {
   const list = [...cards], cols = colsNow();
-  for (const el of list) if (el.classList.contains('card')) el.style.gridColumnEnd = `span ${spanFor(el, cols)}`;
-  for (const el of list) if (el.classList.contains('card')) balanceCard(el, cols);
+  for (const el of list) if (el.classList.contains('card')) chooseSpan(el, cols);
   for (const el of list) fitRows(el);
 }
 function prepareCards(cards) {
