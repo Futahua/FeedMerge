@@ -59,6 +59,18 @@ Edit `config.json`. It's re-read every cycle, so there's no need to restart.
 
 Batches of 25 posts, one call per 20 s by default. The AI only adds labels; the feed itself never depends on it.
 
+## Backup
+
+The scheduled task "FeedMerge backup" runs `scripts/backup.mjs` hourly (and at logon). It takes a consistent
+copy of `data/feed.db` with SQLite's `VACUUM INTO` while FeedMerge keeps running, checks it with
+`PRAGMA integrity_check`, and stores it gzipped in `D:\Programs\FeedMergeBackups\hourly\<time>` (48 hourly +
+30 daily, about 9 MB each). The image cache (`data/media`, whose source links expire) is mirrored to
+`D:\Programs\FeedMergeBackups\media`. Log: `D:\Programs\FeedMergeBackupsackup.log`.
+
+To restore: stop FeedMerge, gunzip a copy over `data/feed.db`, delete `feed.db-wal` and `feed.db-shm`, and
+copy `media` back into `data/media`. Both copies live on SlopTop's own disk: they cover a bad reparse or a
+damaged database, not losing the disk.
+
 ## Limits
 - It only sees what your Chrome sessions load. The TikTok and Instagram phone apps aren't captured.
 - Facebook and LinkedIn aren't supported.
