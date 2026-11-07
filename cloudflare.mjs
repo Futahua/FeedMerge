@@ -6,7 +6,8 @@ import { setMachineLabels } from './categorize.mjs';
 
 const EMBED_MODEL = '@cf/baai/bge-m3';
 const DECIDE_MODEL = '@cf/cloudflare/clef-flash';
-const NEURONS = { embed: 1075 / 1e6, decide: 3455 / 1e6 }; // per input token (Workers AI pricing page)
+const NEURONS = { embed: 1075 / 1e6, decide: 3455 / 1e6, ask: 4119 / 1e6, askOut: 34868 / 1e6 }; // per token (Workers AI pricing page)
+const ASK_MODEL = '@cf/meta/llama-3.1-8b-instruct'; // small text model for short jobs (Wikipedia subjects)
 const CF_VERSION = 1; // bump to re-run decisions on everything
 
 export function initCloudflare(db) {
@@ -181,6 +182,18 @@ export function startCloudflare(db, readConfig, log, hooks = {}) {
 
   return {
     active: () => !!cloudflareConfig(readConfig),
+    // A short text answer, inside the same daily budget.
+    ask: async (messages, maxTokens = 400) => {
+      const cfg = cloudflareConfig(readConfig);
+      if (!cfg) throw new Error('Cloudflare AI is off');
+      const cap = Number(cfg.dailyNeuronCap) || 9000;
+      if (usage.get() >= cap) throw new Error('daily AI budget used');
+      const r = await run(cfg, ASK_MODEL, { messages, max_tokens: maxTokens });
+      usage.add(r.usage?.neurons ?? ((r.usage?.prompt_tokens || 1500) * NEURONS.ask + (r.usage?.completion_tokens || maxTokens) * NEURONS.askOut));
+      // Asked for JSON, the model may answer with the parsed object itself.
+      const out = r.response ?? r.choices?.[0]?.message?.content ?? '';
+      return typeof out === 'string' ? out : JSON.stringify(out);
+    },
     usage: () => ({ today: Math.round(usage.get()), cap: Number(cloudflareConfig(readConfig)?.dailyNeuronCap) || 9000 }),
     labelsChanged: () => db.prepare('update items set cf_done = 0 where first_seen > ?').run(Date.now() - 3 * 864e5),
   };

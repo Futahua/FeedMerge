@@ -17,6 +17,7 @@ import { reparseCaptures } from './reparse.mjs';
 import { expire, retentionSettings, NAVIGATION } from './retention.mjs';
 import { createManagement } from './management.mjs';
 import { initArticles, getArticle } from './article.mjs';
+import { startWikipedia } from './wikipedia.mjs';
 
 const DIR = path.dirname(fileURLToPath(import.meta.url));
 const DATA = process.env.FEEDMERGE_DATA_DIR || path.join(DIR, 'data');
@@ -70,6 +71,7 @@ const management = createManagement(db);
 let poller = null;
 let categorizer = null;
 let cf = null;
+let wiki = null;
 
 const q = {
   rawIns: db.prepare('insert into raw(platform, kind, url, page_url, captured_at, body, profile) values (?, ?, ?, ?, ?, ?, ?)'),
@@ -474,4 +476,5 @@ server.listen(PORT, '127.0.0.1', () => {
     aiStories: () => embeddingStories(db, log, Number(readConfig().cloudflare?.storyThreshold) || 0.8),
   });
   cf = startCloudflare(db, readConfig, log, { onEmbedded: () => categorizer.recluster() });
+  wiki = startWikipedia(db, ingest, log, readConfig, cf);
 });
