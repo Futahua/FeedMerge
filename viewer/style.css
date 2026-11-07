@@ -127,3 +127,24 @@ aside.open { transform: none; visibility: visible; }
 
 .new-badge { background: #2f7cf6; color: #fff; border-radius: 4px; padding: 0 5px; font-size: 11px; font-weight: 600; margin-right: 6px; }
 .since-visit { margin: 8px 0 12px; font-size: 13px; opacity: .75; }
+
+/* Compact label strip: small chips; ✓/✕ only while pointing at a chip. */
+#feed .card { position: relative; }
+#feed .fm-strip { gap: 4px; padding: 6px 10px 7px; }
+#feed .lab { font-size: 11px; line-height: 18px; padding: 0 7px; }
+#feed .lab .ok, #feed .lab .no { display: none; }
+#feed .lab:hover { padding-right: 2px; }
+#feed .lab:hover .ok, #feed .lab:hover .no { display: inline; opacity: 1; }
+#feed .add-lab { width: 18px; height: 18px; font-size: 11px; line-height: 1; padding: 0; }
+#feed .fm-strip .new-badge { margin-right: 2px; }
+
+/* On a mouse, the footer (source · Open · ☆), "+" and "View … here" appear only while the
+   card is hovered, floating over it so nothing moves. Touch screens keep them visible. */
+@media (hover: hover) {
+  #feed .fm-strip .meta { position: absolute; right: 8px; bottom: 6px; padding: 2px 8px; border-radius: 999px;
+    background: var(--c-bg, var(--panel)); box-shadow: 0 1px 6px rgba(0,0,0,.35); }
+  #feed .fm-strip .meta, #feed .add-lab, #feed .embed-btn { opacity: 0; pointer-events: none; transition: opacity .15s; }
+  #feed .card:hover .fm-strip .meta, #feed .card:hover .add-lab, #feed .card:hover .embed-btn,
+  #feed .card:focus-within .fm-strip .meta, #feed .card:focus-within .embed-btn { opacity: 1; pointer-events: auto; }
+  #feed .fm-strip:not(:has(.lab, .new-badge)) { padding: 0; border-top: 0; min-height: 4px; }
+}

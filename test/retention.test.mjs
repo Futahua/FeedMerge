@@ -6,7 +6,7 @@ import { expire } from '../retention.mjs';
 const DAY = 86400e3, NOW = 100 * DAY;
 function fixture() {
   const db = new DatabaseSync(':memory:');
-  db.exec(`create table items(id text primary key, author text, title text, text text, flags text, last_seen int, saved int default 0);
+  db.exec(`create table items(id text primary key, context text, author text, title text, text text, flags text, last_seen int, saved int default 0);
     create virtual table items_fts using fts5(author, title, text);
     create table item_labels(item_id text, label_id int, decided int default 0);
     create table embeddings(item_id text primary key, vec blob);
@@ -43,6 +43,15 @@ test('expires untouched and ad posts, keeps the library and anything still being
   assert.equal(db.prepare('select count(*) n from story_edges').get().n, 0);
   assert.equal(db.prepare("select count(*) n from items_fts where items_fts match 'old'").get().n, 0);
   assert.equal(db.prepare("select count(*) n from items_fts where items_fts match 'fresh'").get().n, 1);
+});
+
+test('posts captured while navigating are removed unless engaged', () => {
+  const db = fixture();
+  db.exec("update items set context = 'thread' where id in ('fresh', 'oldSaved')");
+  expire(db, { now: NOW });
+  const left = db.prepare('select id from items').all().map(x => x.id);
+  assert.ok(!left.includes('fresh'));
+  assert.ok(left.includes('oldSaved'));
 });
 
 test('window is configurable and a second run changes nothing', () => {

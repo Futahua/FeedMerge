@@ -70,7 +70,10 @@ The viewer has no top bar: name, search, order, Categories, Sources and every fi
 on every screen. ☰ opens it; ✕, a tap outside, Escape or Back close it. Posts sit in a packed grid that follows Flow's smart box rule: a card takes the shape
 of what it shows (wide media spans 2–3 columns, tall video and text stay one), media is never taller than 70% of
 the window, and tiles pack densely so gaps fill across and down. On a PC, Ctrl+scroll zooms the grid; cards
-animate to their new size and place. General web pages show only the site icon, the shorter of the site's name
+animate to their new size and place. Cards keep balanced proportions: one
+much taller than wide (over 1.6×) widens a column at a time, up to three, while that helps. Label chips are compact
+(format chips are left to the sidebar; ✓/✕ show on a chip under the pointer), and with a mouse the footer, "+"
+and "View … here" appear only while a card is hovered. General web pages show only the site icon, the shorter of the site's name
 or address, and the title.
 
 ## Staying current (retention)
@@ -80,6 +83,8 @@ FeedMerge is for keeping up, not for hoarding. Hourly (and 30 s after start) `re
 - deletes a post nobody engaged with once no feed has shown it for **7 days** (counted from when a feed last
   showed it, so posts the algorithms keep pushing stay while they are current);
 - keeps the **library** forever: saved posts, posts in a collection, posts with a label you confirmed (✓);
+- never stores, and removes, posts captured while you navigate (a thread's replies, a profile, a search):
+  only what feeds push to you counts;
 - deletes ads after **1 day** and raw captures after **3 days** (reparse rebuilds the posts those cover and
   keeps older posts unchanged).
 

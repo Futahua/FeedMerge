@@ -48,11 +48,13 @@ function balance(list) {
 
 // ---------- The FeedMerge strip under each native card ----------
 function strip(it) {
-  const labs = it.labels.map(l => `<span class="lab lay-${esc(l.layer)} ${l.decided === 1 ? 'yes' : ''}" data-lab="${l.id}" title="${esc(l.layer)} · ${l.decided === 1 ? 'confirmed by you' : esc(l.source)}">
+  // Format chips (Text post, Photo…) repeat what the card already shows; the sidebar still filters by them.
+  const labs = it.labels.filter(l => l.layer !== 'format').map(l => `<span class="lab lay-${esc(l.layer)} ${l.decided === 1 ? 'yes' : ''}" data-lab="${l.id}" title="${esc(l.layer)} · ${l.decided === 1 ? 'confirmed by you' : esc(l.source)}">
       <button class="nm" data-filter="${l.id}" data-name="${esc(l.name)}" data-layer="${esc(l.layer)}">${l.source === 'agent' && l.decided !== 1 ? '<span title="Suggested by an assistant">✦ </span>' : ''}${esc(l.name)}</button>
       <button class="ok" data-decide="1" title="Correct">✓</button><button class="no" data-decide="-1" title="Wrong">✕</button></span>`).join('');
-  return `<div class="fm-strip">${labs}<button class="add-lab" data-add title="Add a label">+</button>
-    <span class="meta">${lastVisit && it.firstSeen > lastVisit ? '<span class="new-badge" title="Arrived since your last visit">New</span>' : ''}${it.platform === 'web' ? '' : `<span title="${esc(NAMES[it.platform])} · ${esc(it.context || '')}">${esc(NAMES[it.platform] || it.platform)} · ${esc(it.context || '')}</span>`}
+  const fresh = lastVisit && it.firstSeen > lastVisit ? '<span class="new-badge" title="Arrived since your last visit">New</span>' : '';
+  return `<div class="fm-strip">${fresh}${labs}<button class="add-lab" data-add title="Add a label">+</button>
+    <span class="meta">${it.platform === 'web' ? '' : `<span title="${esc(NAMES[it.platform])} · ${esc(it.context || '')}">${esc(NAMES[it.platform] || it.platform)} · ${esc(it.context || '')}</span>`}
     ${it.seenCount > 1 ? `<span title="times the platform showed this to you">shown ${it.seenCount}×</span>` : ''}
     <a href="${esc(it.url)}" target="_blank" rel="noopener noreferrer">Open</a>
     <button class="star ${it.saved ? 'on' : ''}" data-save title="Save">${it.saved ? '★' : '☆'}</button></span></div>`;
@@ -249,12 +251,26 @@ function fitRows(el) {
   if (h) el.style.gridRowEnd = `span ${Math.ceil((h + GAP) / ROW)}`;
 }
 const rowWatch = new ResizeObserver(entries => { for (const e of entries) fitRows(e.target); });
-function layoutCards(cards = feedEl.children) {
-  const cols = colsNow();
-  for (const el of cards) {
-    if (el.classList.contains('card')) el.style.gridColumnEnd = `span ${spanFor(el, cols)}`;
+// Harmonic proportions: a card much taller than it is wide (a long text post in one narrow
+// column) widens a column at a time, up to three, while that actually makes it less tall.
+const MAX_TALL = 1.6;
+function balanceCard(el, cols) {
+  let span = Number(el.style.gridColumnEnd.split(' ')[1]) || 1;
+  const limit = Math.min(cols, 3);
+  let ratio = el.offsetHeight / Math.max(1, el.offsetWidth);
+  while (ratio > MAX_TALL && span < limit) {
+    el.style.gridColumnEnd = `span ${span + 1}`;
+    const next = el.offsetHeight / Math.max(1, el.offsetWidth);
+    if (next >= ratio - 0.05) { el.style.gridColumnEnd = `span ${span}`; break; }
+    span++;
+    ratio = next;
   }
-  for (const el of cards) fitRows(el);
+}
+function layoutCards(cards = feedEl.children) {
+  const list = [...cards], cols = colsNow();
+  for (const el of list) if (el.classList.contains('card')) el.style.gridColumnEnd = `span ${spanFor(el, cols)}`;
+  for (const el of list) if (el.classList.contains('card')) balanceCard(el, cols);
+  for (const el of list) fitRows(el);
 }
 function prepareCards(cards) {
   for (const el of cards) {

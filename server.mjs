@@ -14,7 +14,7 @@ import { initCategories, startCategorizer } from './categorize.mjs';
 import { initCloudflare, startCloudflare, embeddingStories, cloudflareConfig } from './cloudflare.mjs';
 import { transaction } from './sqlite-transaction.mjs';
 import { reparseCaptures } from './reparse.mjs';
-import { expire, retentionSettings } from './retention.mjs';
+import { expire, retentionSettings, NAVIGATION } from './retention.mjs';
 import { createManagement } from './management.mjs';
 
 const DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -88,6 +88,9 @@ function ingest(cap, keepRaw = true, strict = false) {
   let added = 0;
   transaction(db, () => {
     for (const it of items) {
+      // Pages you navigate to (a thread's replies, a profile, a search) are not what your
+      // feeds pushed to you: they are not stored, and seeing a post there doesn't refresh it.
+      if (NAVIGATION.has(it.context)) continue;
       if (seen.has(it.id)) continue;
       seen.add(it.id);
       const ex = q.get.get(it.id);

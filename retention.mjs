@@ -14,6 +14,10 @@ import { transaction } from './sqlite-transaction.mjs';
 
 const DAY = 86400e3;
 
+// Capture contexts that come from navigating rather than from a feed: never stored, and
+// removed by expire() (unless engaged).
+export const NAVIGATION = new Set(['thread', 'profile', 'search']);
+
 export function retentionSettings(db) {
   const meta = k => db.prepare('select v from meta where k = ?').get(k)?.v;
   const num = (env, key, fallback) => {
@@ -39,8 +43,9 @@ export function expire(db, { now = Date.now(), ...override } = {}) {
     db.prepare(`insert into expiring(id, rid)
       select id, rowid from items
       where not ${ENGAGED}
-        and (last_seen < ? or (coalesce(json_extract(flags, '$.ad'), 0) = 1 and last_seen < ?))`)
-      .run(now - s.days * DAY, now - s.adDays * DAY);
+        and (last_seen < ? or (coalesce(json_extract(flags, '$.ad'), 0) = 1 and last_seen < ?)
+             or context in (${[...NAVIGATION].map(() => '?').join(',')}))`)
+      .run(now - s.days * DAY, now - s.adDays * DAY, ...NAVIGATION);
     const posts = db.prepare('select count(*) n from expiring').get().n;
     if (posts) {
       db.exec(`
