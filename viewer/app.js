@@ -102,7 +102,7 @@ async function facets() {
   cats = c;
   $('#platforms').innerHTML = f.platforms.map(p => `<button class="chip ${state.platforms.has(p.platform) ? 'on' : ''}" data-pf="${esc(p.platform)}">${esc(NAMES[p.platform] || p.platform)}<span class="n">${p.n}</span></button>`).join('') || '<span class="foot">No captures yet</span>';
   const ctx = f.contexts.filter(x => !state.platforms.size || state.platforms.has(x.platform));
-  $('#contexts').innerHTML = ctx.slice(0, 12).map(x => `<button data-ctx="${esc(x.context)}" class="${state.context === x.context ? 'on' : ''}"><span>${esc(NAMES[x.platform] || x.platform)} · ${esc(x.context)}</span><span class="n">${x.n}</span></button>`).join('');
+  $('#contexts').innerHTML = ctx.map(x => `<button data-ctx="${esc(x.context)}" class="${state.context === x.context ? 'on' : ''}"><span title="${esc(x.context)}">${esc(NAMES[x.platform] || x.platform)} · ${esc(String(x.context).replace(/ \((page|browser)\)$/, ''))}</span><span class="n">${x.n}</span></button>`).join('');
   $('#layerBoxes').innerHTML = c.layers.map(l => {
     const labs = l.labels.filter(x => x.n > 0).slice(0, l.id === 'story' ? 15 : 12);
     if (!labs.length) return '';
@@ -375,7 +375,7 @@ async function loadSources() {
   $('#srcList').innerHTML = list.length ? list.map(s => `<div class="src ${s.enabled ? '' : 'off'}" data-src="${s.id}">
       <div class="nm">${esc(s.name)}</div>
       <div class="acts"><button class="btn" data-src-act="refresh">Refresh</button><button class="btn" data-src-act="toggle">${s.enabled ? 'Pause' : 'Resume'}</button><button class="btn" data-src-act="delete">Remove</button></div>
-      <div class="sub">${s.kind === 'page' ? 'Watched page' : 'Feed'} · every ${s.interval_min} min · ${s.items} items · checked ${s.last_fetch ? ago(s.last_fetch) + ' ago' : 'never'}</div>
+      <div class="sub">${s.kind === 'page' ? 'Watched page' : s.kind === 'rendered' ? 'Read by your browser' : 'Feed'} · every ${s.kind === 'rendered' ? Math.max(60, s.interval_min) : s.interval_min} min · ${s.items} items · checked ${s.last_fetch ? ago(s.last_fetch) + ' ago' : 'never'}</div>
       <div class="sub">${esc(s.url)}</div>
       ${s.last_error ? `<div class="err">Last check failed: ${esc(s.last_error)}</div>` : ''}
     </div>`).join('') : '<p class="hint">No web sources yet.</p>';
@@ -393,7 +393,7 @@ $('#addSource').addEventListener('submit', async e => {
     const r = await POST('/api/sources', { input, locale: $('#srcLocale').value });
     const j = await r.json();
     if (!r.ok) throw new Error(j.error || r.status);
-    $('#srcMsg').textContent = `Added “${j.name}” as ${j.kind === 'page' ? 'a watched page' : 'a feed'}${j.last_count != null ? ` with ${j.last_count} items` : ''}.`;
+    $('#srcMsg').textContent = `Added “${j.name}” as ${j.kind === 'page' ? 'a watched page' : j.kind === 'rendered' ? 'a page your browser reads (it needs the browser to draw it). Open the FeedMerge extension and press Allow once' : 'a feed'}${j.last_count != null ? ` with ${j.last_count} items` : ''}.`;
     $('#srcInput').value = '';
     loadSources();
   } catch (err) { $('#srcMsg').textContent = `Couldn't add it: ${err.message}`; }

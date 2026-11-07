@@ -53,6 +53,18 @@ test('actual isolated API enforces rename preconditions, agent provenance and ma
     const f = (await api('/api/facets')).value;
     assert.equal(f.profiles,2);
     assert.deepEqual(f.accounts.map(a=>[a.platform,a.n]),[['web',2]]);
+    // A browser-read source: only same-site headline links from the extension are kept.
+    const { DatabaseSync } = await import('node:sqlite');
+    const side = new DatabaseSync(path.join(dir, 'feed.db'));
+    const sid = side.prepare("insert into sources(kind, name, url, interval_min, created) values ('rendered', 'App site (browser)', 'https://app.example.test/', 60, 1)").run().lastInsertRowid;
+    side.close();
+    assert.equal((await api('/api/rendered-sources')).value.length, 1);
+    const got = (await api(`/api/rendered-sources/${sid}`, { links: [
+      { url: 'https://app.example.test/2026/11/7/first-story', title: 'A first story drawn by the app in the browser' },
+      { url: 'https://elsewhere.test/ad', title: 'An outside link that must not be kept at all' },
+    ] })).value;
+    assert.equal(got.parsed, 1);
+    assert.equal((await api('/api/items?ads=1&limit=200')).value.filter(x => x.context === 'App site (browser)').length, 1);
   } finally {
     child.kill(); await new Promise(resolve=>child.exitCode!==null?resolve():child.once('exit',resolve));
     await rm(dir,{recursive:true,force:true});

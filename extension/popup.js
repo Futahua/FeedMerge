@@ -26,5 +26,17 @@ document.getElementById('rf').onchange = async e => { const p = e.target.dataset
 document.getElementById('rfNow').onclick = async e => { e.target.disabled = true; e.target.textContent = 'Started — one feed per minute'; await chrome.runtime.sendMessage({ type: 'refresh-now' }); renderRefresh(); };
 renderRefresh();
 
+// Sites added in FeedMerge that only a browser can read: Chrome must allow each one once.
+chrome.runtime.sendMessage({ type: 'render-needs' }).then(hosts => {
+  if (!hosts?.length) return;
+  const box = document.getElementById('access');
+  box.innerHTML = `<div class="muted" style="margin-top:8px">These sources are apps only a browser can read. Let FeedMerge read: <b></b></div><button class="primary">Allow</button>`;
+  box.querySelector('b').textContent = hosts.join(', ');
+  box.querySelector('button').onclick = async () => {
+    const ok = await chrome.permissions.request({ origins: hosts.map(h => `https://${h}/*`) });
+    box.innerHTML = `<div class="muted" style="margin-top:8px">${ok ? 'Allowed. They are read on the next background refresh.' : 'Not allowed.'}</div>`;
+  };
+});
+
 document.getElementById('open').onclick = () => chrome.tabs.create({ url: 'http://127.0.0.1:4747/' });
 render();

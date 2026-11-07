@@ -290,6 +290,30 @@ const server = http.createServer(async (req, res) => {
     if (mutating && req.headers['x-feedmerge'] !== '1') return send(res, 403, { error: 'header' });
     if(mutating&&req.headers['x-feedmerge-agent']==='1'&&readConfig().agent?.writes===false)return send(res,403,{error:'Agent writes are disabled by the local owner.'});
 
+    // Browser-read sources (JavaScript apps): the extension asks which are due, opens them,
+    // and sends back the headline links it found.
+    if (req.method === 'GET' && u.pathname === '/api/rendered-sources') {
+      return send(res, 200, db.prepare("select id, name, url, interval_min, last_fetch from sources where enabled = 1 and kind = 'rendered'").all());
+    }
+    const rs = req.method === 'POST' && /^\/api\/rendered-sources\/(\d+)$/.exec(u.pathname);
+    if (rs) {
+      const src = db.prepare("select * from sources where id = ? and kind = 'rendered'").get(Number(rs[1]));
+      if (!src) return send(res, 404, { error: 'no such source' });
+      const body = JSON.parse(await readBody(req));
+      const now = Date.now();
+      if (body.error || !Array.isArray(body.links)) {
+        db.prepare('update sources set last_fetch = ?, last_error = ? where id = ?').run(now, String(body.error || 'no links').slice(0, 200), src.id);
+        return send(res, 200, { ok: false });
+      }
+      const host = new URL(src.url).host.replace(/^www\./, '');
+      const links = body.links.filter(l => { try { return new URL(l.url).host.replace(/^www\./, '') === host && typeof l.title === 'string'; } catch { return false; } })
+        .slice(0, 80).map(l => ({ url: String(l.url), title: l.title.replace(/\s+/g, ' ').trim().slice(0, 300) }));
+      const r = ingest({ platform: 'web', kind: 'links', url: src.url, pageUrl: `source:${src.name}`, capturedAt: now, payload: JSON.stringify(links) });
+      if (r.added) log('source', src.name, `+${r.added}/${r.parsed}`);
+      db.prepare('update sources set last_fetch = ?, last_ok = ?, last_error = null, last_count = ? where id = ?').run(now, now, r.parsed, src.id);
+      return send(res, 200, { ok: true, ...r });
+    }
+
     if (req.method === 'POST' && u.pathname === '/ingest') {
       const cap = JSON.parse(await readBody(req));
       const r = ingest(cap);
@@ -351,11 +375,11 @@ const server = http.createServer(async (req, res) => {
       const cfg = readConfig();
       const r = await resolveSource(body.input, { locale: body.locale || cfg.news?.locale, rsshub: cfg.rsshub || 'http://127.0.0.1:1200' });
       const name = (body.name || r.name).slice(0, 120);
-      const interval = Math.max(10, Number(body.interval) || (r.kind === 'page' ? 60 : 30));
+      const interval = Math.max(10, Number(body.interval) || (r.kind === 'page' || r.kind === 'rendered' ? 60 : 30));
       const ex = db.prepare('select id from sources where url = ?').get(r.url);
       if (ex) return send(res, 409, { error: 'Already added', id: ex.id });
       const id = db.prepare('insert into sources(kind, name, url, interval_min, created) values (?, ?, ?, ?, ?)').run(r.kind, name, r.url, interval, Date.now()).lastInsertRowid;
-      await poller.pollNow(id);
+      if (r.kind !== 'rendered') await poller.pollNow(id);
       log('source added', r.kind, name, r.url);
       return send(res, 200, db.prepare('select * from sources where id = ?').get(id));
     }
@@ -364,7 +388,7 @@ const server = http.createServer(async (req, res) => {
       const id = Number(srcAct[1]);
       if (srcAct[2] === 'delete') db.prepare('delete from sources where id = ?').run(id);
       if (srcAct[2] === 'toggle') db.prepare('update sources set enabled = 1 - enabled where id = ?').run(id);
-      if (srcAct[2] === 'refresh') { db.prepare('update sources set last_hash = null where id = ?').run(id); await poller.pollNow(id); }
+      if (srcAct[2] === 'refresh') { db.prepare("update sources set last_hash = null, last_fetch = case when kind = 'rendered' then null else last_fetch end where id = ?").run(id); await poller.pollNow(id); }
       return send(res, 200, { ok: true });
     }
     if (req.method === 'GET' && u.pathname === '/api/categories') return send(res, 200, categories());

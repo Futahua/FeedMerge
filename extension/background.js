@@ -140,7 +140,70 @@ async function refreshTick(force) {
   const quiet = refresh.quietFrom < refresh.quietTo ? h >= refresh.quietFrom && h < refresh.quietTo : h >= refresh.quietFrom || h < refresh.quietTo;
   if (quiet && !force) return;
   const due = Object.keys(TARGETS).filter(p => refresh.platforms[p].on && (force === p || Date.now() >= (refresh.next[p] || 0)));
-  if (due.length) await openRefresh(due[0]);
+  if (due.length) return openRefresh(due[0]);
+  const page = await renderedDue();
+  if (page) await readRendered(page);
+}
+
+// ---------- Browser-read web sources ----------
+// Sites that are JavaScript apps send the server an empty page. These are opened here, in the
+// same minimized window, and their headline links are read once the page has drawn itself.
+// Chrome asks once per site (popup) before the extension may read it.
+const RENDER_WAIT_MS = 12_000;
+
+function collectHeadlines() {
+  const host = location.host.replace(/^www\./, '');
+  const seen = new Set(), out = [];
+  for (const a of document.querySelectorAll('a[href]')) {
+    let u;
+    try { u = new URL(a.href); } catch { continue; }
+    if (u.host.replace(/^www\./, '') !== host || u.pathname.split('/').filter(Boolean).length < 1) continue;
+    const title = (a.innerText || a.textContent || a.title || '').replace(/\s+/g, ' ').trim();
+    if (title.length < 25 || title.length > 300) continue;
+    u.hash = '';
+    if (seen.has(u.href)) continue;
+    seen.add(u.href);
+    out.push({ url: u.href, title });
+    if (out.length >= 80) break;
+  }
+  return out;
+}
+
+async function renderedDue() {
+  let list = [];
+  try { list = await (await fetch(SERVER + '/api/rendered-sources')).json(); } catch { return null; }
+  const needs = [];
+  let due = null;
+  for (const s of list) {
+    const origin = new URL(s.url).origin + '/*';
+    if (!(await chrome.permissions.contains({ origins: [origin] }))) { needs.push(new URL(s.url).host); continue; }
+    if (!due && Date.now() >= (s.last_fetch || 0) + Math.max(60, s.interval_min || 60) * 60_000) due = s;
+  }
+  await chrome.storage.local.set({ renderNeeds: needs });
+  return due;
+}
+
+async function readRendered(src) {
+  let { refreshWin } = await chrome.storage.local.get('refreshWin');
+  const win = refreshWin != null ? await chrome.windows.get(refreshWin).catch(() => null) : null;
+  let tab;
+  if (win) tab = await chrome.tabs.create({ windowId: win.id, url: 'about:blank', active: true });
+  else {
+    const w = await chrome.windows.create({ url: 'about:blank', state: 'minimized', focused: false });
+    tab = w.tabs[0];
+    await chrome.storage.local.set({ refreshWin: w.id });
+  }
+  await chrome.tabs.update(tab.id, { muted: true, autoDiscardable: false, url: src.url });
+  await chrome.storage.local.set({ openRefresh: { tabId: tab.id, platform: 'web:' + src.id, opened: Date.now() } });
+  setTimeout(async () => {
+    let body;
+    try {
+      const [r] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: collectHeadlines });
+      body = { links: r?.result || [] };
+    } catch (e) { body = { error: String(e?.message || e) }; }
+    try { await fetch(SERVER + '/api/rendered-sources/' + src.id, { method: 'POST', headers: { 'content-type': 'application/json', 'x-feedmerge': '1' }, body: JSON.stringify(body) }); } catch {}
+    await finishOpen();
+  }, RENDER_WAIT_MS);
 }
 
 // First run: stagger the platforms a couple of minutes apart.
@@ -152,6 +215,7 @@ async function seedSchedule() {
 
 chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   if (msg?.type === 'refresh-state') { refreshState().then(reply); return true; }
+  if (msg?.type === 'render-needs') { renderedDue().then(() => chrome.storage.local.get('renderNeeds')).then(r => reply(r.renderNeeds || [])); return true; }
   if (msg?.type === 'refresh-set') {
     (async () => {
       const r = await refreshState();

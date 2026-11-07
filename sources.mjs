@@ -79,12 +79,22 @@ export async function resolveSource(input, { locale, rsshub = 'http://127.0.0.1:
     } catch {}
   }
   const links = extractLinks(text, res.url || url);
+  // A JavaScript app sends an empty shell that only a browser fills in: the extension reads
+  // it in the background refresh window instead (see extension/background.js).
+  if (links.length < 3 && appShell(text)) return { kind: 'rendered', url: res.url || url, name: ((feedTitle(text) || '').split(/ [-|–] /)[0].trim() || base.host) + ' (browser)' };
   if (links.length < 3) throw new Error('No feed found and too few article links on that page to watch it');
   return { kind: 'page', url: res.url || url, name: (feedTitle(text) || base.host) + ' (page)' };
 }
 
 const ENT = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
 const decode = s => s.replace(/&(#x[\da-f]+|#\d+|\w+);/gi, (m, e) => e[0] === '#' ? String.fromCodePoint(e[1] === 'x' || e[1] === 'X' ? parseInt(e.slice(2), 16) : Number(e.slice(1))) : ENT[e.toLowerCase()] ?? m);
+
+// Almost no visible text, an app mount point and scripts: rendered by JavaScript.
+export function appShell(html) {
+  const body = (/<body[^>]*>([\s\S]*)<\/body>/i.exec(html)?.[1] || '')
+    .replace(/<(script|style|noscript)[\s\S]*?<\/\1>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  return body.length < 400 && /<script\b/i.test(html) && /id=["'](__nuxt|__next|root|app|svelte)["']|<app-root|data-reactroot|ng-version/i.test(html);
+}
 
 // Headline-like links on a page with no feed: long anchor text, same site, deeper than the home page.
 export function extractLinks(html, base) {
@@ -110,7 +120,7 @@ export function extractLinks(html, base) {
 export function startPoller(db, ingest, log, readConfig) {
   initSources(db);
   let running = false;
-  const due = db.prepare('select * from sources where enabled = 1 and (last_fetch is null or last_fetch + interval_min * 60000 <= ?) order by last_fetch limit 8');
+  const due = db.prepare("select * from sources where enabled = 1 and kind != 'rendered' and (last_fetch is null or last_fetch + interval_min * 60000 <= ?) order by last_fetch limit 8");
   const mark = db.prepare('update sources set last_fetch = ?, last_ok = coalesce(?, last_ok), last_error = ?, etag = coalesce(?, etag), last_modified = coalesce(?, last_modified), last_hash = coalesce(?, last_hash), last_count = coalesce(?, last_count) where id = ?');
 
   async function pollOne(src) {
@@ -145,5 +155,5 @@ export function startPoller(db, ingest, log, readConfig) {
   }
   setInterval(tick, 60_000).unref?.();
   setTimeout(tick, 3_000).unref?.();
-  return { pollNow: async id => { const s = db.prepare('select * from sources where id = ?').get(id); if (s) await pollOne(s); } };
+  return { pollNow: async id => { const s = db.prepare('select * from sources where id = ?').get(id); if (s && s.kind !== 'rendered') await pollOne(s); } };
 }

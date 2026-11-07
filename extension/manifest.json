@@ -1,9 +1,10 @@
 {
   "manifest_version": 3,
   "name": "FeedMerge capture",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Saves the feed posts you scroll past on X, YouTube, TikTok, Facebook, Instagram, Pinterest, Threads, Bluesky and Reddit to your local FeedMerge store.",
-  "permissions": ["storage", "alarms", "unlimitedStorage", "background"],
+  "permissions": ["storage", "alarms", "unlimitedStorage", "background", "scripting"],
+  "optional_host_permissions": ["https://*/*", "http://*/*"],
   "host_permissions": ["http://127.0.0.1:4747/*"],
   "background": { "service_worker": "background.js" },
   "action": { "default_title": "FeedMerge", "default_popup": "popup.html" },
