@@ -196,33 +196,54 @@ $('#sort').addEventListener('change', e => { state.sort = e.target.value; rememb
 $('#saved').addEventListener('change', e => { state.saved = e.target.checked; load(true); });
 $('#ads').addEventListener('change', e => { state.ads = e.target.checked; load(true); });
 $('#review').addEventListener('change', e => { state.review = e.target.checked; renderActive(); load(true); });
-// Sidebar: on wide screens ☰ collapses/expands the column (remembered); on phones it opens a
-// drawer that closes with ✕, a tap outside, Escape or the Back button.
-const phone = matchMedia('(max-width: 900px)');
-try { if (localStorage.getItem('fm-side') === '0') document.body.classList.add('side-off'); } catch {}
-const sideOpen = () => phone.matches ? $('#side').classList.contains('open') : !document.body.classList.contains('side-off');
+// Sidebar: a drawer on every screen. ☰ opens it; ✕, a tap outside, Escape or Back close it.
+const sideOpen = () => $('#side').classList.contains('open');
 function setSide(open, fromHistory) {
-  if (phone.matches) {
-    $('#side').classList.toggle('open', open);
-    $('#scrim').hidden = !open;
-    document.body.style.overflow = open ? 'hidden' : '';
-    document.body.classList.toggle('drawer-open', open);
-    if (open && !fromHistory) history.pushState({ fmSide: 1 }, '');
-    else if (!open && !fromHistory && history.state?.fmSide) history.back();
-  } else {
-    document.body.classList.toggle('side-off', !open);
-    try { localStorage.setItem('fm-side', open ? '1' : '0'); } catch {}
-  }
+  $('#side').classList.toggle('open', open);
+  $('#scrim').hidden = !open;
+  document.body.classList.toggle('drawer-open', open);
+  document.body.style.overflow = open ? 'hidden' : '';
   $('#menu').setAttribute('aria-expanded', String(open));
+  if (open && !fromHistory) history.pushState({ fmSide: 1 }, '');
+  else if (!open && !fromHistory && history.state?.fmSide) history.back();
 }
 $('#menu').addEventListener('click', () => setSide(!sideOpen()));
 $('#sideClose').addEventListener('click', () => setSide(false));
 $('#scrim').addEventListener('click', () => setSide(false));
-addEventListener('popstate', () => { if (phone.matches && sideOpen()) setSide(false, true); });
-addEventListener('keydown', e => { if (e.key === 'Escape' && phone.matches && sideOpen()) setSide(false); });
-for (const id of ['#catsBtn', '#sourcesBtn']) $(id).addEventListener('click', () => { if (phone.matches) setSide(false); });
-phone.addEventListener('change', () => { $('#side').classList.remove('open'); document.body.classList.remove('drawer-open'); $('#scrim').hidden = true; document.body.style.overflow = ''; $('#menu').setAttribute('aria-expanded', String(sideOpen())); });
-$('#menu').setAttribute('aria-expanded', String(sideOpen()));
+addEventListener('popstate', () => { if (sideOpen()) setSide(false, true); });
+addEventListener('keydown', e => { if (e.key === 'Escape' && sideOpen()) setSide(false); });
+for (const id of ['#catsBtn', '#sourcesBtn']) $(id).addEventListener('click', () => setSide(false));
+$('#menu').setAttribute('aria-expanded', 'false');
+
+// Grid zoom: Ctrl+scroll makes cards bigger (fewer columns) or smaller (more), like zooming a
+// photo grid; the page itself is not zoomed. Remembered per browser.
+const CARD_MIN = 240, CARD_MAX = 1000;
+let cardW = 440;
+try { cardW = Math.min(CARD_MAX, Math.max(CARD_MIN, Number(localStorage.getItem('fm-card-w')) || 440)); } catch {}
+const hint = Object.assign(document.createElement('div'), { className: 'zoom-hint' });
+document.body.append(hint);
+let hintTimer = 0;
+function applyZoom(show) {
+  document.documentElement.style.setProperty('--card-w', cardW + 'px');
+  if (!show) return;
+  const cols = getComputedStyle($('#feed')).gridTemplateColumns.split(' ').length;
+  hint.textContent = `${cols} column${cols === 1 ? '' : 's'}`;
+  hint.classList.add('on');
+  clearTimeout(hintTimer);
+  hintTimer = setTimeout(() => hint.classList.remove('on'), 900);
+}
+applyZoom(false);
+addEventListener('wheel', e => {
+  if (!e.ctrlKey || sideOpen()) return;
+  e.preventDefault();
+  const anchor = document.elementFromPoint(e.clientX, e.clientY)?.closest('.card');
+  const before = anchor?.getBoundingClientRect().top;
+  cardW = Math.round(Math.min(CARD_MAX, Math.max(CARD_MIN, cardW * Math.exp(-e.deltaY * 0.0015))));
+  applyZoom(true);
+  // Keep the card under the pointer in place while the grid reflows.
+  if (anchor && before !== undefined) scrollBy(0, anchor.getBoundingClientRect().top - before);
+  try { localStorage.setItem('fm-card-w', String(cardW)); } catch {}
+}, { passive: false });
 $('#fresh').addEventListener('click', () => { window.scrollTo(0, 0); refresh(); });
 document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => { b.closest('dialog').close(); refresh(); }));
 

@@ -66,9 +66,9 @@ by `tailscale serve --bg --https=8447 http://127.0.0.1:4747`. The server only an
 `config.json` `"hosts": ["sloptop.taild88607.ts.net:8447"]` adds that one. Writes still need the viewer's
 `x-feedmerge` header. Turn it off with `tailscale serve --https=8447 off`.
 
-The viewer has no top bar: name, search, order, Categories, Sources and every filter live in the sidebar. On a
-PC it is the left column (✕ collapses it, ☰ brings it back, remembered); on a phone ☰ opens it as a drawer that
-closes with ✕, a tap outside, Escape or Back.
+The viewer has no top bar: name, search, order, Categories, Sources and every filter live in a sidebar drawer
+on every screen. ☰ opens it; ✕, a tap outside, Escape or Back close it. Posts sit in a grid; on a PC,
+Ctrl+scroll zooms it (bigger cards and fewer columns, or smaller and more), remembered per browser.
 
 ## Staying current (retention)
 
