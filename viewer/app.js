@@ -272,7 +272,12 @@ function letterbox(el) {
   return total ? empty / total : 0;
 }
 function chooseSpan(el, cols) {
-  const limit = Math.min(cols, 3);
+  // A tall post/quote is not a reason to enlarge its media across the feed.
+  // Respect the user's single-column zoom, but automatic widening stays compact.
+  el.style.gridColumnEnd = 'span 1';
+  const baseWidth = el.offsetWidth;
+  const maxWidth = Math.max(baseWidth, 640);
+  const limit = Math.min(cols, 3, Math.max(1, Math.floor((maxWidth + GAP) / (baseWidth + GAP))));
   let best = 1, bestScore = Infinity, prev = null;
   for (let span = 1; span <= limit; span++) {
     el.style.gridColumnEnd = `span ${span}`;
