@@ -84,11 +84,21 @@ test('actual isolated API enforces rename preconditions, agent provenance and ma
     assert.equal((await api('/api/rendered-sources')).value.length,1); // private targets never enter the browser queue
     const controls=(await api('/api/backend/controls')).value;
     assert(controls.controls.length>=50);assert(!JSON.stringify(controls).includes('apiToken'));
-    const settings=(await api('/api/agent/preview',{operation:'backend_settings',input:{changes:{'viewer.platforms.pinterest.keepPercent':25,'capture.platforms.pinterest.hours':18,'capture.platforms.pinterest.scrolls':3}}})).value;
+    const animeCap={platform:'web',kind:'links',url:'https://example.test',payload:[{url:'https://example.test/anime-post',title:'An anime series arriving this week with a long enough headline'}]};
+    await api('/ingest',animeCap);
+    const anime=(await api('/api/items?ads=1&limit=200')).value.find(x=>x.url==='https://example.test/anime-post');assert(anime);
+    const settings=(await api('/api/agent/preview',{operation:'backend_settings',input:{changes:{'viewer.platforms.pinterest.keepPercent':25,'capture.platforms.pinterest.hours':18,'capture.platforms.pinterest.scrolls':3,'content.blockedTerms':['anime']}}})).value;
     assert.equal((await api('/api/viewer-policy')).value.platforms,undefined);
     const settingReceipt=(await api('/api/agent/apply',{operation:'backend_settings',preview_id:settings.preview_id})).value;
     assert.equal((await api('/api/viewer-policy')).value.platforms.pinterest.keepPercent,25);
     assert.equal((await api('/api/capture-policy')).value.platforms.pinterest.scrolls,3);
+    assert(!(await api('/api/items?ads=1&limit=200')).value.some(x=>x.id===anime.id));
+    const purgePlan=(await api('/api/agent/preview',{operation:'backend_job',input:{action:'apply_exclusions'}})).value;
+    const purgeJob=(await api('/api/agent/apply',{operation:'backend_job',preview_id:purgePlan.preview_id,expected_action:'apply_exclusions'})).value;
+    let purgeState;
+    for(let i=0;i<50;i++){purgeState=(await api('/api/ingestion-status')).value.jobs.find(j=>j.id===purgeJob.job_id);if(['completed','failed'].includes(purgeState?.status))break;await new Promise(r=>setTimeout(r,100));}
+    assert.equal(purgeState.status,'completed',purgeState.error);assert.equal(purgeState.result.removed,1);assert.equal(purgeState.result.backup_created,true);
+    assert.equal((await api('/api/items/'+encodeURIComponent(anime.id))).status,404);
     await api('/api/agent/undo',{receipt_id:settingReceipt.receipt_id,apply:true});
     assert.equal((await api('/api/viewer-policy')).value.platforms,undefined);
     const work=(await api('/api/agent/preview',{operation:'backend_job',input:{action:'reparse'}})).value;
@@ -96,6 +106,9 @@ test('actual isolated API enforces rename preconditions, agent provenance and ma
     let status;
     for(let i=0;i<50;i++){status=(await api('/api/ingestion-status')).value.jobs.find(j=>j.id===queued.job_id);if(['completed','failed'].includes(status?.status))break;await new Promise(resolve=>setTimeout(resolve,100));}
     assert.equal(status?.status,'completed',status?.error);assert.equal(status.result.backup_created,true);
+    assert.equal((await api('/api/items/'+encodeURIComponent(anime.id))).status,404);
+    assert.equal((await api('/ingest',animeCap)).value.parsed,0); // deleted raw capture cannot resurrect its post
+
     assert.equal((await api('/api/agent/undo',{receipt_id:queued.receipt_id,apply:true})).status,409);
 
 
