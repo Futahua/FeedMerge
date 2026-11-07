@@ -259,8 +259,42 @@
     const m = it.media[0];
     const name = it.context && it.context.length < h.length ? it.context : h;
     return `<div class="web-head"><img class="fav" src="https://www.google.com/s2/favicons?domain=${encodeURIComponent(h)}&sz=32" alt="" referrerpolicy="no-referrer"><b title="${esc(it.context || h)}">${esc(name)}</b><span class="mute">· ${ago(it.publishedAt || it.firstSeen)}</span></div>
-      <a class="web-main" href="${esc(it.url)}" target="_blank" rel="noopener noreferrer"><div><div class="web-title">${esc(it.title || '')}</div>${it.text ? `<div class="web-text clamp3">${esc(it.text)}</div>` : ''}</div>${m ? img(m, 'web-img') : ''}</a>`;
+      <a class="web-main" href="${esc(it.url)}" target="_blank" rel="noopener noreferrer"><div><div class="web-title">${esc(it.title || '')}</div>${it.text ? `<div class="web-text clamp3">${esc(it.text)}</div>` : ''}</div>${m ? img(m, 'web-img') : ''}</a>
+      ${it.url ? `<div class="web-article" data-article="${esc(it.id)}" hidden></div>` : ''}`;
   };
+
+  // The article itself, fetched (and cached) by the server when the card comes into view.
+  // Blocks are plain text, so a site's own HTML never runs here.
+  function articleHtml(a) {
+    const out = [];
+    for (const b of a.blocks || []) {
+      if (b.t === 'img') out.push(`<img src="${esc(src(b.src))}" alt="${esc(b.alt || '')}" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()"${b.w && b.h ? ` style="aspect-ratio:${b.w} / ${b.h}"` : ''}>`);
+      else if (b.t === 'h') out.push(`<h4>${esc(b.text)}</h4>`);
+      else if (b.t === 'li') out.push(`<p class="li">${esc(b.text)}</p>`);
+      else if (b.t === 'q') out.push(`<blockquote>${esc(b.text)}</blockquote>`);
+      else if (b.t === 'cap') out.push(`<p class="cap">${esc(b.text)}</p>`);
+      else out.push(`<p>${esc(b.text)}</p>`);
+    }
+    return out.join('');
+  }
+  const aio = new IntersectionObserver(entries => {
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      aio.unobserve(e.target);
+      // The card is watched, not the (hidden, so never "visible") article box.
+      const box = e.target.matches('[data-article]') ? e.target : e.target.querySelector('[data-article]');
+      if (!box) continue;
+      fetch('/api/article?id=' + encodeURIComponent(box.dataset.article)).then(r => r.ok ? r.json() : null).then(a => {
+        if (!a?.blocks?.length) return;
+        const card = box.closest('.card');
+        // The opening of the article usually repeats the summary and the lead picture.
+        card?.querySelector('.web-text')?.remove();
+        if (a.blocks.some(b => b.t === 'img')) card?.querySelector('.web-img')?.remove();
+        box.innerHTML = articleHtml(a);
+        box.hidden = false;
+      }, () => {});
+    }
+  }, { rootMargin: '600px 0px' });
 
   // ---------- Official embeds ----------
   function embedUrl(it) {
@@ -289,6 +323,7 @@
     f.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen; clipboard-write';
     f.allowFullscreen = true;
     f.loading = 'eager';
+    f.referrerPolicy = 'strict-origin-when-cross-origin'; // YouTube's player refuses to run without it
     if (e.ratio) f.style.aspectRatio = e.ratio; else f.style.height = e.height + 'px';
     if (e.ratio === '9 / 16') f.classList.add('tall');
     box.appendChild(f);
@@ -317,6 +352,7 @@
   }, { threshold: [0, 0.6] });
 
   function mount(root) {
+    root.querySelectorAll('[data-article]:not([data-obs])').forEach(box => { box.dataset.obs = '1'; aio.observe(box.closest('.card') || box.parentElement); });
     root.querySelectorAll('[data-media-frame]:not([data-frame-obs])').forEach(box => {
       box.dataset.frameObs = '1';
       if (box.closest('.vt')) return; // reels/shorts retain their own fixed frame

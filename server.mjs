@@ -16,6 +16,7 @@ import { transaction } from './sqlite-transaction.mjs';
 import { reparseCaptures } from './reparse.mjs';
 import { expire, retentionSettings, NAVIGATION } from './retention.mjs';
 import { createManagement } from './management.mjs';
+import { initArticles, getArticle } from './article.mjs';
 
 const DIR = path.dirname(fileURLToPath(import.meta.url));
 const DATA = process.env.FEEDMERGE_DATA_DIR || path.join(DIR, 'data');
@@ -56,6 +57,7 @@ create virtual table if not exists items_fts using fts5(author, title, text);
 `);
 
 initSources(db);
+initArticles(db);
 initCategories(db);
 initCloudflare(db);
 const management = createManagement(db);
@@ -279,6 +281,11 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, r);
     }
     if (req.method === 'GET' && u.pathname === '/api/items') return send(res, 200, listItems(u.searchParams));
+    if (req.method === 'GET' && u.pathname === '/api/article') {
+      const item = db.prepare("select id, url from items where id = ? and platform = 'web'").get(u.searchParams.get('id') || '');
+      if (!item?.url) return send(res, 404, { error: 'not a web post' });
+      return send(res, 200, await getArticle(db, item));
+    }
     const fullPost = /^\/api\/items\/(.+)$/.exec(u.pathname);
     if (req.method === 'GET' && fullPost) {
       const id = decodeURIComponent(fullPost[1]), item = db.prepare('select * from items where id=?').get(id);

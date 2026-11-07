@@ -54,6 +54,7 @@ export function expire(db, { now = Date.now(), ...override } = {}) {
         delete from embeddings where item_id in (select id from expiring);
         delete from story_edges where a in (select id from expiring) or b in (select id from expiring);
         delete from post_reviews where item_id in (select id from expiring);
+        delete from articles where item_id in (select id from expiring);
         delete from items where id in (select id from expiring);`);
     }
     const raw = db.prepare('delete from raw where captured_at < ?').run(now - s.rawDays * DAY).changes;
