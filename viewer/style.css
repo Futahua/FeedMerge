@@ -1,6 +1,6 @@
 :root {
   --bg: #f6f6f4; --panel: #ffffff; --fg: #1b1b1a; --muted: #6b6b66; --line: #e4e3df; --chip: #efeeea; --accent: #2f6fed;
-  --x: #1b1b1a; --youtube: #e62117; --tiktok: #fe2c55; --facebook: #0866ff; --instagram: #c13584; --threads: #555; --bluesky: #1185fe; --reddit: #ff4500; --web: #2a8a5c;
+  --x: #1b1b1a; --youtube: #e62117; --tiktok: #fe2c55; --facebook: #0866ff; --pinterest: #e60023; --instagram: #c13584; --threads: #555; --bluesky: #1185fe; --reddit: #ff4500; --web: #2a8a5c;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {

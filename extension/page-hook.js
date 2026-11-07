@@ -11,6 +11,7 @@
     h === 'www.tiktok.com' ? 'tiktok' :
     h === 'www.facebook.com' || h === 'web.facebook.com' ? 'facebook' :
     h === 'www.instagram.com' ? 'instagram' :
+    /(^|\.)pinterest\.com$/.test(h) ? 'pinterest' :
     /^www\.threads\.(com|net)$/.test(h) ? 'threads' :
     h === 'bsky.app' ? 'bluesky' : null;
   if (!platform) return;
@@ -22,6 +23,7 @@
     instagram: /\/(graphql\/query|api\/graphql|api\/v1\/feed\/|api\/v1\/clips\/|api\/v1\/discover\/)/,
     threads: /\/(graphql\/query|api\/graphql)/,
     facebook: /^\/api\/graphql\/?$/,
+    pinterest: /^\/(resource\/[A-Za-z]+Resource\/get\/?|_graphql\/?)$/,
     bluesky: /\/xrpc\/app\.bsky\.feed\.(getTimeline|getFeed|getListFeed|getAuthorFeed|getPostThread|searchPosts)\b/,
   }[platform];
   const wanted = u => { try { return WANT.test(new URL(u, location.href).pathname); } catch { return false; } };
@@ -68,6 +70,13 @@
         for (const el of document.querySelectorAll('script[type="application/json"]')) {
           const t = el.textContent || '';
           if (t.includes('"taken_at"')) send(at, t);
+        }
+      }
+      // Pinterest's first grid is server-rendered state in the HTML.
+      if (platform === 'pinterest') {
+        for (const el of document.querySelectorAll('script#__PWS_INITIAL_PROPS__, script#__PWS_DATA__, script[type="application/json"]')) {
+          const t = el.textContent || '';
+          if (t.includes('"images"') && t.includes('"pinner"')) send(at, t);
         }
       }
       // Facebook's first feed page is prefetched into the HTML as Relay data.

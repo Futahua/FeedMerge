@@ -98,6 +98,13 @@ function contextFromPage(platform, pageUrl) {
       if (p.startsWith('/explore')) return 'explore';
       if (p.startsWith('/p/')) return 'post';
       return 'profile';
+    case 'pinterest':
+      if (p === '/' || p === '/homefeed') return 'home';
+      if (p.startsWith('/today')) return 'today';
+      if (p.startsWith('/ideas')) return 'explore';
+      if (p.startsWith('/pin/')) return 'related';
+      if (p.startsWith('/search')) return 'search';
+      return 'profile';
     case 'facebook':
       if (p === '/' || p === '/home.php') return 'home';
       if (p.startsWith('/groups/feed')) return 'groups';
@@ -426,6 +433,72 @@ function parseFacebook(doc, cap, now, out) {
   });
 }
 
+// ---------- Pinterest ----------
+// Pins come from the REST resources (/resource/…Resource/get/) in snake_case, or from the
+// newer /_graphql/ in camelCase; both shapes are read.
+const pinImg = n => {
+  const im = n?.images || {};
+  const best = im.orig || im['736x'] || im['564x'] || im['474x'] || im['236x']
+    || n?.imageSpec_orig || n?.imageSpec_736x || n?.imageSpec_474x || n?.imageSpec_236x;
+  return best?.url ? { url: best.url, w: best.width, h: best.height } : null;
+};
+function pinVideo(list) {
+  if (!list) return null;
+  const v = list.V_720P || list.v720P || list.V_EXP7 || list.V_540P || list.V_360P
+    || Object.values(list).find(x => typeof x?.url === 'string' && x.url.endsWith('.mp4'));
+  return v?.url?.endsWith('.mp4') ? v : null;
+}
+function parsePinterest(doc, cap, now, out) {
+  walk(doc, n => {
+    const isPin = n.type === 'pin' || n.__typename === 'Pin';
+    const id = String(n.id ?? n.entityId ?? '');
+    if (!isPin || !/^\d+$/.test(id)) return;
+    const media = [];
+    const add = (im, video) => {
+      if (!im?.url || media.some(m => m.url === im.url) || media.length >= 10) return;
+      media.push(clean({ type: video ? 'video' : 'image', url: im.url, w: im.w ?? im.width, h: im.h ?? im.height, video: video?.url, duration: video?.duration }));
+    };
+    const vid = pinVideo(n.videos?.video_list || n.videos?.videoList);
+    const cover = pinImg(n);
+    if (vid) add(cover || { url: vid.thumbnail, w: vid.width, h: vid.height }, vid);
+    for (const slot of n.carousel_data?.carousel_slots || n.carouselData?.carouselSlots || []) add(pinImg(slot));
+    // Idea pins: pages of image/video blocks.
+    for (const page of n.story_pin_data?.pages || n.storyPinData?.pages || []) for (const b of page.blocks || []) {
+      const bv = pinVideo(b.video?.video_list || b.video?.videoList);
+      const bi = b.image ? pinImg(b.image) : null;
+      if (bv) add(bi || { url: bv.thumbnail, w: bv.width, h: bv.height }, bv); else if (bi) add(bi);
+    }
+    if (!media.length && cover) add(cover);
+    if (!media.length) return 'skip';
+    const who = n.native_creator || n.nativeCreator || n.pinner || n.closeup_attribution || {};
+    const title = String(n.title || n.grid_title || n.gridTitle || n.rich_summary?.display_name || '').trim();
+    const desc = String(n.description || n.closeup_unified_description || n.closeupUnifiedDescription || '').trim();
+    const stats = n.aggregated_pin_data?.aggregated_stats || n.aggregatedPinData?.aggregatedStats || {};
+    const reactions = n.reaction_counts ? Object.values(n.reaction_counts).reduce((a, b) => a + (Number(b) || 0), 0) : undefined;
+    const created = Date.parse(n.created_at || n.createdAt || '');
+    const link = typeof n.link === 'string' && !/pinterest\.com/.test(n.link) ? n.link : undefined;
+    out.push({
+      nativeId: id,
+      author: who.username,
+      authorName: who.full_name || who.fullName || who.username,
+      title,
+      text: desc && desc !== title ? desc : '',
+      url: `https://www.pinterest.com/pin/${id}/`,
+      media,
+      publishedAt: Number.isFinite(created) ? created : undefined,
+      metrics: clean({ saves: num(stats.saves) || undefined, likes: reactions || undefined, comments: num(n.comment_count ?? n.commentCount) || undefined }),
+      flags: clean({
+        ad: n.is_promoted || n.isPromoted || n.promoter ? true : undefined,
+        avatar: who.image_medium_url || who.imageMediumUrl || who.image_small_url,
+        link,
+        domain: link && n.domain && !/pinterest/i.test(n.domain) ? n.domain : undefined,
+        video: media.some(m => m.type === 'video') || undefined,
+      }),
+    });
+    return 'skip';
+  });
+}
+
 // ---------- Bluesky ----------
 const BSKY_CTX = { getTimeline: 'following', getFeed: 'feed', getListFeed: 'list', getAuthorFeed: 'profile', getPostThread: 'thread', searchPosts: 'search' };
 
@@ -543,4 +616,4 @@ function parseFeedText(text, cap, out) {
   }
 }
 
-const PARSERS = { web: parseWeb, x: parseX, youtube: parseYouTube, tiktok: parseTikTok, facebook: parseFacebook, instagram: parseInstagram, threads: parseThreads, bluesky: parseBluesky, reddit: parseReddit };
+const PARSERS = { web: parseWeb, x: parseX, youtube: parseYouTube, tiktok: parseTikTok, facebook: parseFacebook, instagram: parseInstagram, pinterest: parsePinterest, threads: parseThreads, bluesky: parseBluesky, reddit: parseReddit };

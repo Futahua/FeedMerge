@@ -199,7 +199,7 @@ function facets() {
 // display on other sites. Images you actually look at are fetched once and kept on disk.
 const MEDIA_DIR = path.join(DATA, 'media');
 fs.mkdirSync(MEDIA_DIR, { recursive: true });
-const MEDIA_HOSTS = /(^|\.)(fbcdn\.net|cdninstagram\.com|tiktokcdn\.com|tiktokcdn-us\.com|twimg\.com|ytimg\.com|ggpht\.com|redd\.it|redditmedia\.com|redditstatic\.com|bsky\.app|bsky\.social)$/;
+const MEDIA_HOSTS = /(^|\.)(fbcdn\.net|cdninstagram\.com|pinimg\.com|tiktokcdn\.com|tiktokcdn-us\.com|twimg\.com|ytimg\.com|ggpht\.com|redd\.it|redditmedia\.com|redditstatic\.com|bsky\.app|bsky\.social)$/;
 const MEDIA_CAP = 3e9;
 const inflight = new Map();
 

@@ -16,7 +16,7 @@
   const host = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return ''; } };
   const theme = () => (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   // Images from hosts whose links expire or refuse other sites go through the local cache.
-  const PROXY = /(^|\.)(fbcdn\.net|cdninstagram\.com|tiktokcdn\.com|tiktokcdn-us\.com)$/;
+  const PROXY = /(^|\.)(fbcdn\.net|cdninstagram\.com|pinimg\.com|tiktokcdn\.com|tiktokcdn-us\.com)$/;
   const src = u => { try { return PROXY.test(new URL(u).hostname) ? '/media?u=' + encodeURIComponent(u) : u; } catch { return u; } };
 
   const I = {
@@ -230,6 +230,17 @@
       ? `<div class="fb-sum">${m.likes ? `<span class="fb-react">${FB.reacted}${short(m.likes)}</span>` : ''}<span class="grow"></span><span>${right}</span></div>` : '';
     return `${summary}<div class="fb-acts"><span>${FB.like}Like</span><span>${FB.comment}Comment</span><span>${FB.share}Share</span>${embedBtn(it)}</div>`;
   }
+
+  // Pinterest: the pin itself, rounded, at its own shape; title and creator under it.
+  R.pinterest = it => {
+    const m = it.metrics, f = it.flags, media = it.media.filter(x => x.url);
+    const ratio = x => x?.w && x?.h ? Math.max(.5, Math.min(2, x.w / x.h)) : 2 / 3;
+    return `<div class="pin-media">${media.length > 1 ? carousel(media, '2 / 3') : media[0] ? `<div class="pin-one" style="aspect-ratio:${ratio(media[0])}">${one(media[0])}</div>` : ''}
+        ${f.ad ? '<span class="pin-ad">Promoted</span>' : ''}${f.domain ? `<a class="pin-dom" href="${esc(f.link)}" target="_blank" rel="noopener noreferrer">${esc(f.domain)} ↗</a>` : ''}</div>
+      ${it.title ? `<div class="pin-title clamp2">${esc(it.title)}</div>` : ''}
+      ${it.text ? `<div class="pin-text clamp2">${esc(it.text)}</div>` : ''}
+      <div class="pin-who">${avatar(it, 28)}<span class="pin-name">${esc(it.authorName || it.author || '')}</span><span class="grow"></span>${m.saves ? `<span class="mute">${short(m.saves)} saves</span>` : ''}${embedBtn(it)}</div>`;
+  };
 
   R.facebook = it => {
     const m = it.metrics, f = it.flags;

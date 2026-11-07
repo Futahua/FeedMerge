@@ -1,6 +1,6 @@
 const $ = s => document.querySelector(s);
 const { esc, ago, short } = window.Native;
-const NAMES = { web: 'Web', x: 'X', youtube: 'YouTube', tiktok: 'TikTok', facebook: 'Facebook', instagram: 'Instagram', threads: 'Threads', bluesky: 'Bluesky', reddit: 'Reddit' };
+const NAMES = { web: 'Web', x: 'X', youtube: 'YouTube', tiktok: 'TikTok', facebook: 'Facebook', instagram: 'Instagram', pinterest: 'Pinterest', threads: 'Threads', bluesky: 'Bluesky', reddit: 'Reddit' };
 const POST = (url, body) => fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', 'x-feedmerge': '1' }, body: JSON.stringify(body || {}) });
 
 const state = { platforms: new Set(), context: '', labels: new Map(), q: '', sort: 'captured', saved: false, ads: false, review: false, offset: 0, done: false, loading: false };

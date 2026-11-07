@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "FeedMerge capture",
-  "version": "0.3.0",
-  "description": "Saves the feed posts you scroll past on X, YouTube, TikTok, Facebook, Instagram, Threads, Bluesky and Reddit to your local FeedMerge store.",
+  "version": "0.4.0",
+  "description": "Saves the feed posts you scroll past on X, YouTube, TikTok, Facebook, Instagram, Pinterest, Threads, Bluesky and Reddit to your local FeedMerge store.",
   "permissions": ["storage", "alarms", "unlimitedStorage", "background"],
   "host_permissions": ["http://127.0.0.1:4747/*"],
   "background": { "service_worker": "background.js" },
@@ -11,7 +11,7 @@
     {
       "matches": [
         "https://x.com/*", "https://twitter.com/*", "https://www.youtube.com/*", "https://www.tiktok.com/*",
-        "https://www.facebook.com/*", "https://web.facebook.com/*", "https://www.instagram.com/*", "https://www.threads.com/*", "https://www.threads.net/*", "https://bsky.app/*"
+        "https://www.facebook.com/*", "https://web.facebook.com/*", "https://www.instagram.com/*", "https://*.pinterest.com/*", "https://www.threads.com/*", "https://www.threads.net/*", "https://bsky.app/*"
       ],
       "js": ["page-hook.js"],
       "run_at": "document_start",
@@ -20,7 +20,7 @@
     {
       "matches": [
         "https://x.com/*", "https://twitter.com/*", "https://www.youtube.com/*", "https://www.tiktok.com/*",
-        "https://www.facebook.com/*", "https://web.facebook.com/*", "https://www.instagram.com/*", "https://www.threads.com/*", "https://www.threads.net/*", "https://bsky.app/*",
+        "https://www.facebook.com/*", "https://web.facebook.com/*", "https://www.instagram.com/*", "https://*.pinterest.com/*", "https://www.threads.com/*", "https://www.threads.net/*", "https://bsky.app/*",
         "https://www.reddit.com/*", "https://old.reddit.com/*", "https://sh.reddit.com/*"
       ],
       "js": ["bridge.js"],
