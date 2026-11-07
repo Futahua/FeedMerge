@@ -9,3 +9,4 @@ node_modules/
 # Machine-specific startup scripts (contain local paths)
 start-hidden.vbs
 start-rsshub.vbs
+/backups/
