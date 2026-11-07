@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
-import { expire } from '../retention.mjs';
+import { expire, trimPlatform } from '../retention.mjs';
 
 const DAY = 86400e3, NOW = 100 * DAY;
 function fixture() {
@@ -61,4 +61,13 @@ test('window is configurable and a second run changes nothing', () => {
   db.exec("insert into meta values ('retention_days', '14')");
   assert.equal(expire(db, { now: NOW }).posts, 2); // old (10 days) is within 14 now
   assert.equal(expire(db, { now: NOW }).posts, 0);
+});
+
+test('explicit platform trim halves the total, protects reviewed/library posts and cleans dependent records',()=>{
+ const db=fixture();db.exec("alter table items add column platform text; update items set platform='pinterest'; update items set platform='x' where id='pushedAgain'; insert into post_reviews values('fresh')");
+ const r=trimPlatform(db,'pinterest');assert.equal(r.before,8);assert.equal(r.removed,4);assert.equal(r.after,4);
+ const left=db.prepare('select id from items').all().map(x=>x.id);
+ for(const id of ['fresh','oldSaved','oldInCollection','oldConfirmed','pushedAgain'])assert(left.includes(id));
+ assert.equal(db.prepare("select count(*) n from embeddings where item_id not in (select id from items)").get().n,0);
+ assert.equal(db.prepare('select count(*) n from items_fts').get().n,5);
 });

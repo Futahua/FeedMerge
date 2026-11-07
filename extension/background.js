@@ -81,7 +81,7 @@ const TARGETS = {
   x: { url: 'https://x.com/home', hours: 3 },
   facebook: { url: 'https://www.facebook.com/', hours: 4 },
   instagram: { url: 'https://www.instagram.com/', hours: 4 },
-  pinterest: { url: 'https://www.pinterest.com/', hours: 12 },
+  pinterest: { url: 'https://www.pinterest.com/', hours: 24 },
   tiktok: { url: 'https://www.tiktok.com/foryou', hours: 4 },
 };
 const DWELL_MS = 40_000;
@@ -97,10 +97,10 @@ async function refreshState() {
   for (const p of Object.keys(TARGETS)) refresh.platforms[p] ??= { on: true, hours: TARGETS[p].hours };
   // Two profiles otherwise double collection. Upgrade the old six-hour default once;
   // keep deliberately slower schedules, and do not immediately run an overdue sweep.
-  if (!refresh.pinterestSlowV1) {
-    refresh.platforms.pinterest.hours = Math.max(12, refresh.platforms.pinterest.hours || 12);
+  if (!refresh.pinterestSlowV2) {
+    refresh.platforms.pinterest.hours = Math.max(24, refresh.platforms.pinterest.hours || 24);
     refresh.next.pinterest = Math.max(refresh.next.pinterest || 0, Date.now() + refresh.platforms.pinterest.hours * 3600e3);
-    refresh.pinterestSlowV1 = true;
+    refresh.pinterestSlowV2 = true;
     await chrome.storage.local.set({ refresh });
   }
   return refresh;
@@ -132,7 +132,7 @@ async function openRefresh(platform) {
   refresh.last[platform] = Date.now();
   refresh.next[platform] = Date.now() + jitter(refresh.platforms[platform].hours);
   await saveRefresh(refresh);
-  setTimeout(() => chrome.tabs.sendMessage(tab.id, { type: 'fm-autoscroll', steps: platform === 'pinterest' ? 4 : 8 }).catch(() => {}), 9_000);
+  setTimeout(() => chrome.tabs.sendMessage(tab.id, { type: 'fm-autoscroll', steps: platform === 'pinterest' ? 2 : 8 }).catch(() => {}), 9_000);
   setTimeout(finishOpen, DWELL_MS);
 }
 

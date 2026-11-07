@@ -47,7 +47,17 @@ export function expire(db, { now = Date.now(), ...override } = {}) {
              or context in (${[...NAVIGATION].map(() => '?').join(',')}))`)
       .run(now - s.days * DAY, now - s.adDays * DAY, ...NAVIGATION);
     const posts = db.prepare('select count(*) n from expiring').get().n;
-    if (posts) {
+    deleteExpiring(db, posts);
+    const raw = db.prepare('delete from raw where captured_at < ?').run(now - s.rawDays * DAY).changes;
+    db.exec('delete from expiring');
+    db.prepare("insert into meta(k, v) values ('retention_last', ?) on conflict(k) do update set v = excluded.v")
+      .run(JSON.stringify({ at: now, posts, raw, ...s }));
+    return { posts, raw, ...s };
+  });
+}
+
+function deleteExpiring(db, posts) {
+  if (posts) {
       db.exec(`
         delete from items_fts where rowid in (select rid from expiring);
         delete from item_labels where item_id in (select id from expiring);
@@ -58,10 +68,22 @@ export function expire(db, { now = Date.now(), ...override } = {}) {
         delete from item_accounts where item_id in (select id from expiring);
         delete from items where id in (select id from expiring);`);
     }
-    const raw = db.prepare('delete from raw where captured_at < ?').run(now - s.rawDays * DAY).changes;
+}
+
+// Explicit one-off trim, through the same transactional deletion owner as expiry.
+export function trimPlatform(db, platform, fraction = .5) {
+  if (typeof platform !== 'string' || !platform || !(fraction > 0 && fraction < 1)) throw new Error('Invalid trim');
+  return transaction(db, () => {
+    const before = db.prepare('select count(*) n from items where platform = ?').get(platform).n;
+    const requested = Math.floor(before * fraction);
+    db.exec('create temp table if not exists expiring(id text primary key, rid integer)');
     db.exec('delete from expiring');
-    db.prepare("insert into meta(k, v) values ('retention_last', ?) on conflict(k) do update set v = excluded.v")
-      .run(JSON.stringify({ at: now, posts, raw, ...s }));
-    return { posts, raw, ...s };
+    db.prepare(`insert into expiring select id, rowid from items where platform = ? and not ${ENGAGED}
+      and not exists (select 1 from post_reviews pr where pr.item_id = items.id)
+      order by last_seen, rowid limit ?`).run(platform, requested);
+    const removed = db.prepare('select count(*) n from expiring').get().n;
+    deleteExpiring(db, removed);
+    db.exec('delete from expiring');
+    return { platform, before, removed, after: before - removed, requested };
   });
 }
