@@ -227,7 +227,13 @@ $('#menu').setAttribute('aria-expanded', 'false');
 // fill across and down. Ctrl+scroll changes the column width; every visible card
 // animates from where it was to where it lands.
 const feedEl = $('#feed'), GAP = 14, ROW = 4;
-const colsNow = () => getComputedStyle(feedEl).gridTemplateColumns.split(' ').filter(Boolean).length;
+// Count authored tracks, not implicit zero-width tracks left by an old wide card
+// while a desktop grid is shrinking to a single phone column.
+const colsNow = () => {
+  const css = getComputedStyle(feedEl), gap = parseFloat(css.columnGap) || GAP;
+  const minimum = parseFloat(css.getPropertyValue('--card-w')) || 440;
+  return Math.max(1, Math.floor((feedEl.clientWidth + gap) / (Math.min(feedEl.clientWidth, minimum) + gap)));
+};
 // One rule for every card: try it at 1, 2 and 3 columns and keep the width whose drawn
 // shape is closest to a balanced card (about 4:5). A wider option is only taken when it
 // really reshapes the card: if the shape barely changes (a reel's fixed 9:16 frame) or it
@@ -251,12 +257,13 @@ function letterbox(el) {
     const w = m.clientWidth, h = m.clientHeight;
     if (!nw || !nh || !w || !h) continue;
     const scale = Math.min(w / nw, h / nh);
-    empty += w * h - nw * scale * nh * scale;
+    if (getComputedStyle(m).objectFit === 'contain') empty += w * h - nw * scale * nh * scale;
     total += w * h;
   }
   // Fixed-shape frames (reels, TikToks) centre themselves: the card width beside them is empty too.
-  const cw = el.clientWidth;
-  for (const f of el.querySelectorAll('.n-body .vt')) {
+  for (const f of el.querySelectorAll('.n-body .vt, .n-body [data-media-frame]')) {
+    if (!f.classList.contains('vt') && f.closest('.vt')) continue;
+    const cw = f.parentElement.clientWidth;
     const fw = f.offsetWidth, fh = f.offsetHeight;
     if (!fw || !fh || fw >= cw) continue;
     empty += (cw - fw) * fh;

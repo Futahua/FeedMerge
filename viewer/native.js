@@ -63,13 +63,22 @@
     : `<div class="vwrap ${cls}">${img(m)}<span class="badge">${m.type === 'video' ? dur(m.duration) || '▶' : ''}</span></div>`;
   const one = (m, cls) => (m.type === 'video' || m.type === 'gif' ? vid(m, cls) : img(m, cls));
 
+  // Keep ordinary previews compact, with at most 25% of the first image cropped.
+  // Very wide strips often contain text: their real ratio wins over a fixed box.
+  function frameAspect(w, h, fallback = 4 / 3) {
+    const ratio = Number(w) > 0 && Number(h) > 0 ? Number(w) / Number(h) : fallback;
+    if (!Number.isFinite(ratio) || ratio <= 0) return fallback;
+    if (ratio >= 3) return ratio;
+    return Math.max(ratio * .75, Math.min(ratio / .75, Math.max(.8, Math.min(1.91, ratio))));
+  }
+  const frame = (m, fallback) => `data-media-frame style="--media-ratio:${frameAspect(m?.w, m?.h, fallback)};aspect-ratio:var(--media-ratio)"`;
+
   function grid(media) {
     const ms = media.filter(m => m.url).slice(0, 4);
     if (!ms.length) return '';
     if (ms.length === 1) {
       const m = ms[0];
-      const ar = m.w && m.h ? Math.max(0.56, Math.min(1.9, m.w / m.h)) : null;
-      return `<div class="mgrid g1" ${ar ? `style="aspect-ratio:${ar}"` : ''}>${one(m)}</div>`;
+      return `<div class="mgrid g1" ${frame(m, 4 / 3)}>${one(m)}</div>`;
     }
     return `<div class="mgrid g${ms.length}">${ms.map(m => one(m)).join('')}</div>`;
   }
@@ -77,8 +86,9 @@
   function carousel(media, ratio = '4 / 5') {
     const ms = media.filter(m => m.url);
     if (!ms.length) return '';
-    if (ms.length === 1) return `<div class="car" style="aspect-ratio:${ms[0].w && ms[0].h ? Math.max(0.8, Math.min(1.91, ms[0].w / ms[0].h)) : ratio}"><div class="track">${one(ms[0], 'slide')}</div></div>`;
-    return `<div class="car" style="aspect-ratio:${ratio}"><div class="track" data-track>${ms.map(m => `<div class="slide">${one(m)}</div>`).join('')}</div>
+    const fallback = ratio.split('/').reduce((a, b) => Number(a) / Number(b));
+    if (ms.length === 1) return `<div class="car" ${frame(ms[0], fallback)}><div class="track">${one(ms[0], 'slide')}</div></div>`;
+    return `<div class="car" ${frame(ms[0], fallback)}><div class="track" data-track>${ms.map(m => `<div class="slide">${one(m)}</div>`).join('')}</div>
       <span class="count" data-count>1/${ms.length}</span><div class="dots">${ms.map((_, i) => `<i class="${i ? '' : 'on'}"></i>`).join('')}</div></div>`;
   }
 
@@ -98,7 +108,7 @@
           <div class="x-head"><b>${esc(it.authorName || it.author)}</b>${f.verified ? `<span class="ver">${I.check}</span>` : ''}<span class="mute">@${esc(it.author)} · ${ago(it.publishedAt)}</span></div>
           ${it.text ? `<div class="x-text">${richText(it.text, 'x')}</div>` : ''}
           ${grid(it.media)}
-          ${q ? `<a class="x-quote" href="${esc(q.url)}" target="_blank" rel="noopener noreferrer"><div class="x-head">${avatar({ flags: { avatar: q.avatar }, author: q.author }, 20)}<b>${esc(q.name || q.author)}</b><span class="mute">@${esc(q.author)}</span></div><div class="x-text">${esc(q.text)}</div>${q.media?.[0]?.url ? `<div class="mgrid g1">${img(q.media[0])}</div>` : ''}</a>` : ''}
+          ${q ? `<a class="x-quote" href="${esc(q.url)}" target="_blank" rel="noopener noreferrer"><div class="x-head">${avatar({ flags: { avatar: q.avatar }, author: q.author }, 20)}<b>${esc(q.name || q.author)}</b><span class="mute">@${esc(q.author)}</span></div><div class="x-text">${esc(q.text)}</div>${q.media?.[0]?.url ? grid([q.media[0]]) : ''}</a>` : ''}
           <div class="x-acts">${act('reply', m.replies)}${act('repost', m.reposts, 'g')}${act('like', m.likes, 'p')}${act('views', m.views)}<span class="grow"></span>${embedBtn(it)}</div>
         </div>
       </div>`;
@@ -136,7 +146,7 @@
       <div class="rd-title">${esc(it.title || '')}</div>
       ${f.link ? `<a class="rd-link" href="${esc(f.link)}" target="_blank" rel="noopener noreferrer">${esc(host(f.link))} ↗</a>` : ''}
       ${it.text ? `<div class="rd-text clamp6">${richText(it.text, 'reddit')}</div>` : ''}
-      ${it.media.length > 1 ? carousel(it.media, '4 / 3') : it.media[0] ? `<div class="rd-media">${one(it.media[0])}</div>` : ''}
+      ${it.media.length > 1 ? carousel(it.media, '4 / 3') : it.media[0] ? `<div class="rd-media" ${frame(it.media[0], 4 / 3)}>${one(it.media[0])}</div>` : ''}
       <div class="rd-acts"><span class="pill vote">${I.up}<b>${short(m.score) || 'Vote'}</b>${I.down}</span><span class="pill">${I.comment}<b>${short(m.comments) || 0}</b></span><span class="pill pill-share">${I.share}<b>Share</b></span><span class="grow"></span>${embedBtn(it)}</div>`;
   };
 
@@ -273,6 +283,25 @@
   }, { threshold: [0, 0.6] });
 
   function mount(root) {
+    root.querySelectorAll('[data-media-frame]:not([data-frame-obs])').forEach(box => {
+      box.dataset.frameObs = '1';
+      if (box.closest('.vt')) return; // reels/shorts retain their own fixed frame
+      const media = [...box.querySelectorAll('img, video')], first = media[0];
+      const sync = () => {
+        const w = first?.naturalWidth || first?.videoWidth, h = first?.naturalHeight || first?.videoHeight;
+        if (w && h) box.style.setProperty('--media-ratio', frameAspect(w, h));
+        const ratio = Number(box.style.getPropertyValue('--media-ratio'));
+        for (const item of media) {
+          const iw = item.naturalWidth || item.videoWidth, ih = item.naturalHeight || item.videoHeight;
+          // An unusually different gallery slide is kept whole rather than losing
+          // most of it. Normal photos fill their frame; the first slide never jumps.
+          const retained = iw && ih ? Math.min((iw / ih) / ratio, ratio / (iw / ih)) : 1;
+          item.style.objectFit = retained >= .65 ? 'cover' : 'contain';
+        }
+      };
+      for (const item of media) { item.addEventListener('load', sync); item.addEventListener('loadedmetadata', sync); }
+      sync();
+    });
     root.querySelectorAll('video[data-src]:not([data-obs])').forEach(v => {
       v.dataset.obs = '1';
       vio.observe(v);
@@ -315,5 +344,5 @@
     return false;
   }
 
-  window.Native = { render, mount, handleClick, ago, short, esc };
+  window.Native = { render, mount, handleClick, ago, short, esc, frameAspect };
 })();

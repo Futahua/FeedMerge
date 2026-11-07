@@ -112,3 +112,6 @@ damaged database, not losing the disk.
 
 
 The connector exposes 22 actions. `edit_taxonomy_label`, `create_story`, and `split_story` use the same preview/apply/targeted-undo owner. Splits move explicit memberships into a new stable story ID and retain original captures. Taxonomy edits preserve existing post decisions and do not implicitly queue reclassification. `list_collections` and `manage_collection` maintain named collections of original post IDs in the existing SQLite store; removing a collection never removes posts. Later changes invalidate scoped undo.
+
+
+Media previews use their first image's recorded or loaded dimensions instead of reserving a fixed portrait box. Ordinary first-image cropping retains at least 75% of the image; unusually different gallery slides retain their full image when filling the frame would remove more than 35%. Very wide strips keep their real ratio so image text is not cut away. Reels/Shorts retain their own frame. Narrowing the grid counts explicit columns rather than stale implicit tracks, including a true single-column phone layout.
