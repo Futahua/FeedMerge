@@ -12,7 +12,7 @@ export function reparseCaptures(db, ingest) {
     const one = db.prepare('select * from raw where id = ?');
     for (const { id } of ids) {
       const r = one.get(id);
-      ingest({ platform: r.platform, kind: r.kind, url: r.url, pageUrl: r.page_url, capturedAt: r.captured_at,
+      ingest({ platform: r.platform, kind: r.kind, url: r.url, pageUrl: r.page_url, capturedAt: r.captured_at, profile: r.profile || undefined,
         payload: gunzipSync(r.body).toString('utf8') }, false, true);
     }
     const restore = db.prepare('update items set ai_topics = ?, ai_story = ?, ai_done = ?, saved = ?, cf_done = ?, cat_done = ? where id = ?');

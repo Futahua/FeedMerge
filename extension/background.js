@@ -19,9 +19,22 @@ async function post(cap) {
   if (!r.ok) throw new Error('HTTP ' + r.status);
 }
 
+// Extra accounts live in their own Chrome profiles, so no account's algorithm is muddied by
+// another's interests. Each profile sends an anonymous id with its captures; FeedMerge
+// merges them all into one feed and uses the id only to tell the accounts apart.
+async function profileId() {
+  let { profile } = await chrome.storage.local.get('profile');
+  if (!profile) {
+    profile = [...crypto.getRandomValues(new Uint8Array(8))].map(b => b.toString(16).padStart(2, '0')).join('');
+    await chrome.storage.local.set({ profile });
+  }
+  return profile;
+}
+
 async function capture(cap) {
   const { paused } = await chrome.storage.local.get('paused');
   if (paused) return;
+  cap.profile = await profileId();
   try { await post(cap); await withLock(() => bump(cap.platform, true)); }
   catch {
     await withLock(async () => {

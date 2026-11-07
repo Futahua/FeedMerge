@@ -4,7 +4,7 @@ const relay = cap => { try { chrome.runtime.sendMessage({ type: 'capture', cap }
 window.addEventListener('message', e => {
   const d = e.data;
   if (e.source !== window || !d || d.__feedmerge !== 1 || typeof d.payload !== 'string' || d.payload.length > 25e6) return;
-  relay({ platform: d.platform, kind: d.kind, url: d.url, pageUrl: d.pageUrl, capturedAt: d.capturedAt, payload: d.payload });
+  relay({ platform: d.platform, kind: d.kind, url: d.url, pageUrl: d.pageUrl, capturedAt: d.capturedAt, account: typeof d.account === 'string' ? d.account.slice(0, 40) : undefined, payload: d.payload });
 });
 
 // Background refresh: scroll a few screens so the feed loads more than its first page.

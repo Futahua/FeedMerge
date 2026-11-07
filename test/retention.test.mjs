@@ -13,6 +13,7 @@ function fixture() {
     create table story_edges(a text, b text, sim real);
     create table post_reviews(item_id text primary key);
     create table articles(item_id text primary key, fetched_at int, ok int, blocks text, error text);
+    create table item_accounts(item_id text, profile text, first_seen int, last_seen int, seen int, primary key (item_id, profile));
     create table collection_items(collection_id text, item_id text);
     create table raw(id integer primary key, captured_at int, body blob);
     create table meta(k text primary key, v text);`);

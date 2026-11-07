@@ -54,7 +54,13 @@ create index if not exists items_first on items(first_seen);
 create index if not exists items_pub on items(published_at);
 create index if not exists items_ai on items(ai_done);
 create virtual table if not exists items_fts using fts5(author, title, text);
+-- Several accounts per site, one per Chrome profile, merged into this one feed. A post is
+-- stored once; item_accounts records which profiles were shown it, profile_accounts which
+-- account each profile is signed into per site (where the site exposes it).
+create table if not exists item_accounts (item_id text, profile text, first_seen integer, last_seen integer, seen integer default 1, primary key (item_id, profile));
+create table if not exists profile_accounts (profile text, platform text, account text, last_seen integer, primary key (profile, platform));
 `);
+try { db.exec('alter table raw add column profile text'); } catch {}
 
 initSources(db);
 initArticles(db);
@@ -66,7 +72,11 @@ let categorizer = null;
 let cf = null;
 
 const q = {
-  rawIns: db.prepare('insert into raw(platform, kind, url, page_url, captured_at, body) values (?, ?, ?, ?, ?, ?)'),
+  rawIns: db.prepare('insert into raw(platform, kind, url, page_url, captured_at, body, profile) values (?, ?, ?, ?, ?, ?, ?)'),
+  acct: db.prepare(`insert into profile_accounts(profile, platform, account, last_seen) values (?, ?, ?, ?)
+                    on conflict(profile, platform) do update set account = excluded.account, last_seen = excluded.last_seen`),
+  sighting: db.prepare(`insert into item_accounts(item_id, profile, first_seen, last_seen, seen) values (?, ?, ?, ?, 1)
+                        on conflict(item_id, profile) do update set first_seen = min(first_seen, excluded.first_seen), last_seen = max(last_seen, excluded.last_seen), seen = seen + ?`),
   get: db.prepare('select rowid, text from items where id = ?'),
   ins: db.prepare(`insert into items(id, platform, native_id, context, author, author_name, title, text, url, media, published_at, first_seen, last_seen, metrics, flags)
                    values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`),
@@ -82,7 +92,9 @@ const j = v => (v == null ? null : JSON.stringify(v));
 function ingest(cap, keepRaw = true, strict = false) {
   const t = Number(cap.capturedAt) || Date.now();
   const text = typeof cap.payload === 'string' ? cap.payload : JSON.stringify(cap.payload ?? null);
-  if (keepRaw) q.rawIns.run(s(cap.platform), s(cap.kind), s(cap.url) || '', s(cap.pageUrl) || '', t, gzipSync(text));
+  const profile = /^[a-f0-9]{8,32}$/.test(cap.profile || '') ? cap.profile : null;
+  if (keepRaw) q.rawIns.run(s(cap.platform), s(cap.kind), s(cap.url) || '', s(cap.pageUrl) || '', t, gzipSync(text), profile);
+  if (profile && keepRaw && /^\d{1,40}$/.test(cap.account || '')) q.acct.run(profile, s(cap.platform), cap.account, t);
   let items = [];
   try { items = parseCapture({ platform: cap.platform, kind: cap.kind, url: cap.url, pageUrl: cap.pageUrl, capturedAt: t, text }); }
   catch (e) { log('parse error', cap.platform, cap.url, e.message); if (strict) throw e; }
@@ -106,6 +118,8 @@ function ingest(cap, keepRaw = true, strict = false) {
         q.upd.run(t, j(it.metrics), better ? it.text : ex.text, j(it.media || []), it.publishedAt ?? null, it.id);
         if (better) { q.ftsDel.run(ex.rowid); q.ftsIns.run(ex.rowid, s(it.author) || '', s(it.title) || '', it.text); }
       }
+      // A rebuild replays captures, so it fixes dates without counting the sighting again.
+      if (profile) q.sighting.run(it.id, profile, t, t, keepRaw ? 1 : 0);
     }
   });
   return { parsed: seen.size, added };
@@ -184,6 +198,8 @@ function facets() {
   return {
     platforms: db.prepare('select platform, count(*) n, max(first_seen) last from items group by platform order by n desc').all(),
     contexts: db.prepare('select platform, context, count(*) n from items group by platform, context order by n desc').all(),
+    accounts: db.prepare(`select platform, count(distinct account) n, max(last_seen) last from profile_accounts group by platform order by platform`).all(),
+    profiles: db.prepare('select count(distinct profile) n from raw where profile is not null').get().n,
     ai: {
       enabled: !!(cfg.enabled && (cfg.apiKey || process.env.FEEDMERGE_AI_KEY)) || !!cf?.active(),
       provider: cf?.active() ? 'cloudflare' : cfg.enabled ? 'chat' : 'mock',

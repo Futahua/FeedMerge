@@ -43,6 +43,16 @@ test('actual isolated API enforces rename preconditions, agent provenance and ma
     assert.deepEqual([...(await ids(1234567,0,5)),...(await ids(1234567,5,200))],shuffled);
     assert.notDeepEqual(await ids(7654321),shuffled);
 
+    // Two accounts (two Chrome profiles) shown the same post: one merged post, both accounts known.
+    const shared = { platform:'web',kind:'links',url:'https://example.test',payload:[{url:'https://example.test/shared-post',title:'A post both accounts were shown, long enough'}] };
+    await api('/ingest', { ...shared, profile:'aaaaaaaaaaaaaaaa', account:'111' });
+    await api('/ingest', { ...shared, profile:'bbbbbbbbbbbbbbbb', account:'222' });
+    await api('/ingest', { ...shared, profile:'not a profile id', account:'333' });
+    const merged = (await api('/api/items?ads=1&limit=200')).value.filter(x=>x.url==='https://example.test/shared-post');
+    assert.equal(merged.length,1);
+    const f = (await api('/api/facets')).value;
+    assert.equal(f.profiles,2);
+    assert.deepEqual(f.accounts.map(a=>[a.platform,a.n]),[['web',2]]);
   } finally {
     child.kill(); await new Promise(resolve=>child.exitCode!==null?resolve():child.once('exit',resolve));
     await rm(dir,{recursive:true,force:true});

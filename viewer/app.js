@@ -113,6 +113,7 @@ async function facets() {
     `<div><span>Items</span><span>${f.total.n}</span></div>`,
     `<div><span>Captures kept</span><span>${f.captures}</span></div>`,
     ...f.platforms.map(p => `<div><span>${esc(NAMES[p.platform] || p.platform)} last</span><span>${ago(p.last)} ago</span></div>`),
+    ...(f.profiles > 1 ? [`<div><span>Accounts feeding in</span><span>${f.accounts.map(a => `${esc(NAMES[a.platform] || a.platform)} ${a.n}`).join(' · ') || f.profiles + ' profiles'}</span></div>`] : []),
     `<div><span>AI provider</span><span>${f.ai.enabled ? 'on' : 'mock rules'}</span></div>`,
   ].join('');
 }

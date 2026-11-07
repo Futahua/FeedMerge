@@ -28,9 +28,14 @@
   }[platform];
   const wanted = u => { try { return WANT.test(new URL(u, location.href).pathname); } catch { return false; } };
 
+  // Which account is signed in, where the site exposes it in a readable cookie. Lets
+  // FeedMerge tell two accounts of the same site apart; only the numeric id is read.
+  const ACCOUNT_COOKIE = { x: /(?:^|; )twid=u%3D(\d+)/, instagram: /(?:^|; )ds_user_id=(\d+)/, threads: /(?:^|; )ds_user_id=(\d+)/, facebook: /(?:^|; )c_user=(\d+)/ }[platform];
+  const account = () => { try { return ACCOUNT_COOKIE?.exec(document.cookie)?.[1]; } catch { return undefined; } };
+
   const send = (url, text) => {
     if (typeof text !== 'string' || text.length < 50) return;
-    window.postMessage({ __feedmerge: 1, platform, kind: 'json', url: String(url), pageUrl: location.href, capturedAt: Date.now(), payload: text }, location.origin);
+    window.postMessage({ __feedmerge: 1, platform, kind: 'json', url: String(url), pageUrl: location.href, capturedAt: Date.now(), account: account(), payload: text }, location.origin);
   };
 
   const origFetch = window.fetch;
