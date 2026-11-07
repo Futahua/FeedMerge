@@ -31,7 +31,7 @@ const cap = (docs, pageUrl = 'https://www.facebook.com/') => ({
 test('facebook feed stories become posts with media, counts and author', () => {
   const items = parseCapture(cap([
     { data: { viewer: { news_feed: { edges: [{ node: story('111') }] } } } },
-    { label: 'CometNewsFeed_viewer$stream$CometNewsFeed_viewer_news_feed', data: { node: story('222', { sponsored_data: { ad_id: 'x' } }) } },
+    { label: 'CometNewsFeed_viewer$stream$CometNewsFeed_viewer_news_feed', data: { node: story('222', { cat_sensitive: { enc: null, cat: 'SPONSORED' } }) } },
   ]));
   assert.equal(items.length, 2);
   const [a, b] = items;
@@ -76,4 +76,18 @@ test('streamed responses with the for(;;) guard still parse', () => {
   const c = cap([{ data: { node: story('999') } }]);
   c.text = 'for (;;);' + c.text;
   assert.equal(parseCapture(c).length, 1);
+});
+
+test('disguised ads are recognised from the feed edge, and ad carousel cards give images', () => {
+  const s = story('123');
+  s.comet_sections.content.story.attachments = [{ styles: { attachment: { subattachments: [
+    { media: { __typename: 'DynamicFeedAdAttachmentMedia', id: 'c1', image: { uri: 'https://scontent.xx.fbcdn.net/c1.jpg' } } },
+    { media: { __typename: 'DynamicFeedAdAttachmentMedia', id: 'c2', image: { uri: 'https://scontent.xx.fbcdn.net/c2.jpg' } } },
+  ] } } }];
+  const edge = { node: s, cursor: 'x', category: 'ORGANIC', sponsored: { pso_tad_rens: { __typename: 'SposnoredDaat', ad_id: '120252325225040500' } } };
+  const [ad] = parseCapture(cap([{ data: { viewer: { news_feed: { edges: [edge, { node: story('124') }] } } } }]));
+  assert.equal(ad.flags.ad, true);
+  assert.deepEqual(ad.media.map(m => m.id), ['c1', 'c2']);
+  const plain = parseCapture(cap([{ data: { node: story('124') } }]))[0];
+  assert.equal(plain.flags.ad, undefined);
 });

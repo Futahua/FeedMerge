@@ -365,13 +365,24 @@ function fbMedia(story) {
       if (thumb || video) add({ id: n.id, type: 'video', url: thumb, video, w: n.width || n.original_width, h: n.height || n.original_height, duration: n.playable_duration_in_ms || (n.length_in_second ? n.length_in_second * 1000 : undefined) });
       return;
     }
-    const im = n.photo_image || n.viewer_image || (t === 'Photo' ? n.image : undefined);
+    // Photos; carousel cards (ads and multi-shares) carry GenericAttachmentMedia images;
+    // link shares carry a preview image (not the advertiser's logo).
+    const im = n.photo_image || n.viewer_image || (t === 'Photo' || t === 'GenericAttachmentMedia' || t === 'DynamicFeedAdAttachmentMedia' ? n.image : undefined)
+      || n.flexible_height_share_image || n.large_share_image;
     if (im?.uri) add({ id: n.id, type: 'image', url: im.uri, w: im.width, h: im.height });
   }, FB_CONTENT);
   return out;
 }
 
 function parseFacebook(doc, cap, now, out) {
+  // Ads are marked in disguised ways (scrambled labels, misspelt type names), but always
+  // keep a real ad id or a SPONSORED category somewhere in the feed edge around the story.
+  const AD = /"ad_id":"\d|"cat":"SPONSORED"|\\?"is_sponsored\\?":(1|true)|"category":"SPONSORED"/;
+  const adPosts = new Set();
+  walk(doc, n => {
+    const st = n.node?.__typename === 'Story' ? n.node : null;
+    if (st && typeof st.post_id === 'string' && AD.test(JSON.stringify(n))) adPosts.add(st.post_id);
+  });
   walk(doc, n => {
     if (n.__typename !== 'Story' || typeof n.post_id !== 'string' || !/^\d+$/.test(n.post_id)) return;
     const shared = n.attached_story || fbFind(n, x => x.attached_story, FB_ALL);
@@ -392,7 +403,7 @@ function parseFacebook(doc, cap, now, out) {
     const comments = fbFind(n, x => num(x.comment_rendering_instance?.comments?.total_count) ?? num(x.comments?.total_count) ?? num(x.total_comment_count), FB_ALL);
     const shares = fbFind(n, x => num(x.share_count?.count) ?? num(x.reshares?.count), FB_ALL);
     const views = fbFind(n, x => num(x.video_view_count) ?? num(x.play_count), FB_ALL);
-    const ad = fbFind(n, x => x.sponsored_data || x.category === 'SPONSORED' || x.is_sponsored === true ? true : undefined);
+    const ad = adPosts.has(n.post_id) || AD.test(JSON.stringify({ ...n, attached_story: undefined }));
     out.push({
       nativeId: n.post_id,
       author: actor.name,
