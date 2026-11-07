@@ -222,7 +222,7 @@
       ${it.text ? `<div class="fb-text clamp6">${richText(it.text, 'facebook')}</div>` : ''}
       ${media.length ? `<div class="fb-media">${media.length > 4 ? carousel(media, '1 / 1') : grid(media)}</div>` : ''}
       ${f.link ? `<a class="linkcard" href="${esc(f.link)}" target="_blank" rel="noopener noreferrer"><div><span class="mute">${esc(host(f.link))}</span><b>${esc(f.linkTitle || '')}</b></div></a>` : ''}
-      <div class="fb-stats">${act('like', m.likes)}${act('comment', m.comments)}${act('share', m.reposts)}${m.views != null ? act('views', m.views) : ''}<span class="grow"></span>${embedBtn(it)}</div>`;
+      <div class="fb-stats">${act('like', m.likes || null)}${act('comment', m.comments || null)}${act('share', m.reposts || null)}${m.views ? act('views', m.views) : ''}<span class="grow"></span>${embedBtn(it)}</div>`;
   };
 
   // General pages, kept minimal: the site's icon and whichever is shorter, its name or its
