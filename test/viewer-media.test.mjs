@@ -56,3 +56,14 @@ test('Reddit galleries have desktop arrows that navigate exactly one image',()=>
   track.scrollLeft=300;arrow.dataset.galleryStep='-1';context.window.Native.handleClick({target},item,{});assert.equal(destination,0);
   item.media.pop();assert(!render(item,'').includes('data-gallery-step'));
 });
+
+test('Facebook post text expands and collapses locally without opening its source',()=>{
+  const item={platform:'facebook',author:'author',text:'Long post '.repeat(100),media:[],metrics:{},flags:{}};
+  const html=render(item,'');assert(html.includes('data-text-toggle'));assert(html.includes('aria-label="Post text"'));
+  const classes=new Set(['clamp6']);const text={classList:{toggle(name,on){on?classes.add(name):classes.delete(name)}}};
+  const button={expanded:'false',getAttribute(){return this.expanded},setAttribute(k,v){this.expanded=v},closest(){return {querySelector:()=>text}}};
+  const event={target:{closest:selector=>selector==='[data-text-toggle]'?button:null}};
+  assert.equal(context.window.Native.handleClick(event,item,{}),true);
+  assert(classes.has('fb-text-expanded'));assert(!classes.has('clamp6'));assert.equal(button.expanded,'true');assert.equal(button.textContent,'Show less');
+  context.window.Native.handleClick(event,item,{});assert(classes.has('clamp6'));assert(!classes.has('fb-text-expanded'));assert.equal(button.expanded,'false');
+});

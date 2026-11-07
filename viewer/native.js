@@ -246,7 +246,7 @@
     const m = it.metrics, f = it.flags;
     const media = it.media.filter(x => x.url);
     return `<div class="fb-head">${avatar(it, 40)}<div><b>${esc(it.authorName || it.author)}</b><span class="mute">${f.ad ? 'Sponsored' : ago(it.publishedAt)}${f.shared ? ' · shared' : ''}</span></div></div>
-      ${it.text ? `<div class="fb-text clamp6">${richText(it.text, 'facebook')}</div>` : ''}
+      ${it.text ? `<div class="fb-copy"><div class="fb-text clamp6" tabindex="0" aria-label="Post text">${richText(it.text, 'facebook')}</div><button type="button" class="fb-text-toggle" data-text-toggle aria-expanded="false">Show more</button></div>` : ''}
       ${media.length ? `<div class="fb-media">${media.length > 4 ? carousel(media, '1 / 1') : grid(media)}</div>` : ''}
       ${f.link ? `<a class="linkcard" href="${esc(f.link)}" target="_blank" rel="noopener noreferrer"><div><span class="mute">${esc(host(f.link))}</span><b>${esc(f.linkTitle || '')}</b></div></a>` : ''}
       ${fbFoot(it)}`;
@@ -421,6 +421,16 @@
 
   function handleClick(e, it, card) {
     const t = e.target;
+    const textToggle = t.closest('[data-text-toggle]');
+    if (textToggle) {
+      const text = textToggle.closest('.fb-copy').querySelector('.fb-text');
+      const expanded = textToggle.getAttribute('aria-expanded') !== 'true';
+      text.classList.toggle('fb-text-expanded', expanded);
+      text.classList.toggle('clamp6', !expanded);
+      textToggle.setAttribute('aria-expanded', String(expanded));
+      textToggle.textContent = expanded ? 'Show less' : 'Show more';
+      return true;
+    }
     const arrow = t.closest('[data-gallery-step]');
     if (arrow) {
       const track = arrow.closest('.car').querySelector('[data-track]');
