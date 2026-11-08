@@ -77,7 +77,7 @@ const skip = lang => !lang || lang === 'en' || lang === 'vi' || lang === 'und';
 
 export function startTranslator(db, log, readConfig, { fetchImpl = fetch, intervalMs = 20000, gapMs = 1200 } = {}) {
   initTranslations(db);
-  const pick = db.prepare('select rowid rid, id, author, title, text from items where tr_done = 0 order by first_seen desc limit 25');
+  const pick = db.prepare('select rowid rid, id, author, title, text from items where tr_done = 0 order by first_seen desc limit 200');
   const done = db.prepare('update items set tr_done = ?, tr_from = ?, tr_title = ?, tr_text = ? where id = ?');
   const ftsDel = db.prepare('delete from items_fts where rowid = ?');
   const ftsIns = db.prepare('insert into items_fts(rowid, author, title, text) values (?, ?, ?, ?)');
@@ -85,19 +85,23 @@ export function startTranslator(db, log, readConfig, { fetchImpl = fetch, interv
   async function tick() {
     if (busy || Date.now() < pausedUntil || readConfig().translation?.enabled === false) return 0;
     busy = true;
-    let translated = 0;
+    let translated = 0, sent = 0;
     try {
+      // Posts that need no request are settled right away; at most 25 requests per round.
       for (const r of pick.all()) {
         const title = r.title || '', text = r.text || '';
         if (!(title + text).trim() || isVietnamese(title, text) || looksEnglish(`${title}\n${text}`)) { done.run(1, null, null, null, r.id); continue; }
+        if (sent++ >= 25) break;
         let out;
         try { out = await translateFields([title, text], fetchImpl); }
         catch (e) {
           if (e.retry || e.name === 'TimeoutError' || e.name === 'TypeError') { pausedUntil = Date.now() + 10 * 60e3; log('translate paused 10 min:', e.message); break; }
           done.run(-1, null, null, null, r.id); continue;
         }
-        if (skip(out.lang)) { done.run(1, null, null, null, r.id); continue; }
         const [t, x] = out.fields;
+        // Hashtags, names and links come back unchanged: nothing was translated.
+        const same = (a, b) => a.replace(/\s+/g, ' ').trim().toLowerCase() === b.replace(/\s+/g, ' ').trim().toLowerCase();
+        if (skip(out.lang) || (same(t, title) && same(x, text))) { done.run(1, null, null, null, r.id); continue; }
         done.run(1, out.lang, title ? t : null, text ? x : null, r.id);
         // Search finds the English the viewer shows.
         ftsDel.run(r.rid); ftsIns.run(r.rid, r.author || '', title ? t : '', text ? x : '');

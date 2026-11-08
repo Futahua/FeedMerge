@@ -101,13 +101,15 @@ test('translator shows foreign posts in English, skips English and Vietnamese, a
   db.add('BBC', EN, { id: 'en1' });
   db.add('Báo A', VI, { id: 'vi1' });
   db.add('Blog', 'Bonjour.', { id: 'fr-en', text: '' });
+  db.add('Threads', '#PersijaDay', { id: 'tag' }); // comes back unchanged: not marked as translated
   const calls = [];
   const tr = startTranslator(db, () => {}, () => ({}), { fetchImpl: fake({ 'Hola mundo.': 'Hello world.', 'Otro párrafo.': 'Another paragraph.', 'Bonjour.': 'Hello.' }, 'es', calls), intervalMs: 0, gapMs: 0 });
   assert.equal(await tr.tick(), 2);
-  assert.equal(calls.length, 2, 'English and Vietnamese posts are not sent');
+  assert.equal(calls.length, 3, 'English and Vietnamese posts are not sent');
+  assert.equal(db.prepare("select tr_from from items where id = 'tag'").get().tr_from, null);
   const es = db.prepare("select * from items where id = 'es1'").get();
   assert.deepEqual([es.tr_from, es.tr_title, es.tr_text, es.title], ['es', 'Hello world.', 'Another paragraph.', 'Hola mundo.']);
-  assert.equal(db.prepare("select count(*) n from items where tr_done = 1").get().n, 4);
+  assert.equal(db.prepare("select count(*) n from items where tr_done = 1").get().n, 5);
   assert.equal(db.prepare("select count(*) n from items_fts where items_fts match 'paragraph'").get().n, 1);
   assert.equal(await tr.tick(), 0);
   const art = await translatedArticle(db, { id: 'es1', tr_from: 'es' }, { title: 'Hola mundo.', blocks: [{ t: 'p', text: 'Otro párrafo.' }, { t: 'img', src: 'x.jpg' }] }, fake({ 'Hola mundo.': 'Hello world.', 'Otro párrafo.': 'Another paragraph.' }));
