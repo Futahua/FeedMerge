@@ -37,7 +37,9 @@ export function readConfig() {
 const PORT = Number(process.env.FEEDMERGE_PORT || readConfig().port || 4747);
 // Only these Host headers are served (blocks DNS-rebinding pages). config.json "hosts" adds
 // names that reach FeedMerge through a private proxy, e.g. its Tailscale address.
-const HOSTS = new Set([`127.0.0.1:${PORT}`, `localhost:${PORT}`, ...(readConfig().hosts || [])]);
+const BIND = process.env.FEEDMERGE_BIND_HOST || '127.0.0.1';
+const STAGING = process.env.FEEDMERGE_STAGING === '1';
+const HOSTS = new Set([`${BIND}:${PORT}`, `127.0.0.1:${PORT}`, `localhost:${PORT}`, ...(readConfig().hosts || [])]);
 
 const LOG = process.env.FEEDMERGE_LOG || path.join(DATA, 'server.log');
 function log(...a) {
@@ -271,6 +273,7 @@ async function mediaProxy(res, raw) {
 }
 
 function pruneMedia() {
+  if (STAGING) return;
   try {
     const files = fs.readdirSync(MEDIA_DIR).filter(f => !f.includes('.')).map(f => { const s = fs.statSync(path.join(MEDIA_DIR, f)); return { f, size: s.size, t: s.atimeMs }; });
     let total = files.reduce((a, b) => a + b.size, 0);
@@ -285,6 +288,7 @@ setInterval(pruneMedia, 3600e3).unref();
 
 // Retention: the feed stays current; see retention.mjs.
 function runRetention() {
+  if (STAGING) return;
   try { const r = expire(db); if (r.posts || r.raw) log('retention', JSON.stringify(r)); } catch (e) { log('retention failed', e.message); }
 }
 setTimeout(runRetention, 30e3).unref();
@@ -312,6 +316,7 @@ const server = http.createServer(async (req, res) => {
     if (!HOSTS.has(req.headers.host)) return send(res, 403, { error: 'host' });
     const u = new URL(req.url, `http://${req.headers.host}`);
     const mutating = req.method !== 'GET';
+    if (STAGING && mutating) return send(res, 503, {error:'Migration verification in progress'});
     // Writes need a custom header: plain web pages can't add it to a cross-origin request without a preflight we never allow.
     if (mutating && req.headers['x-feedmerge'] !== '1') return send(res, 403, { error: 'header' });
     if(mutating&&req.headers['x-feedmerge-agent']==='1'&&readConfig().agent?.writes===false)return send(res,403,{error:'Agent writes are disabled by the local owner.'});
@@ -531,7 +536,8 @@ server.on('error', e => {
   if (e.code === 'EADDRINUSE') { log(`port ${PORT} already in use; another FeedMerge is probably running`); process.exit(0); }
   throw e;
 });
-server.listen(PORT, '127.0.0.1', () => {
+server.listen(PORT, BIND, () => {
+  if (STAGING) { log('Migration staging: background workers disabled'); return; }
   log(`FeedMerge on http://127.0.0.1:${PORT}`);
   startTagger(db, readConfig, log);
   poller = startPoller(db, ingest, log, readConfig);

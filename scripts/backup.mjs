@@ -18,6 +18,7 @@ const DB = process.env.FEEDMERGE_DB || path.join(APP, 'data', 'feed.db');
 const MEDIA = path.join(path.dirname(DB), 'media');
 const ROOT = process.env.FEEDMERGE_BACKUP_ROOT || 'D:/Programs/FeedMergeBackups';
 const HOURLY = path.join(ROOT, 'hourly');
+const REMOTE = process.env.FEEDMERGE_BACKUP_URL || (()=>{try{return JSON.parse(fs.readFileSync(path.join(APP,'config.json'),'utf8')).backup?.url;}catch{return null;}})();
 
 const log = msg => {
   const line = `${new Date().toISOString()} ${msg}`;
@@ -63,12 +64,18 @@ async function main() {
   fs.mkdirSync(work, { recursive: true });
   const copy = path.join(work, 'feed.db');
 
+  if(REMOTE){
+    const response=await fetch(REMOTE,{signal:AbortSignal.timeout(120000)});
+    if(!response.ok)throw Error('Remote snapshot HTTP '+response.status);
+    await pipeline(response.body,fs.createWriteStream(copy));
+  } else {
   const db = new DatabaseSync(DB, { readOnly: true });
   try {
     db.exec('PRAGMA busy_timeout = 15000');
     db.exec(`VACUUM INTO '${copy.replaceAll("'", "''")}'`);
   } finally { db.close(); }
 
+  }
   const check = new DatabaseSync(copy, { readOnly: true });
   let posts;
   try {

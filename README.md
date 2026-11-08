@@ -223,3 +223,28 @@ including saved/reviewed matches if they match the explicit exclusion. It takes 
 SQLite backup first. Settings undo does not restore deleted posts. Removed IDs are
 recorded in `content_removed` so a raw-capture reparse cannot resurrect deleted posts.
 The ordinary library-preserving retention and Pinterest trimming policies are unchanged.
+
+### Private backend host and local relay
+
+Keep one authoritative FeedMerge database. `FEEDMERGE_BIND_HOST` defaults to
+loopback; an explicitly configured private Tailscale address supports a remote
+backend. This is a private-network deployment, not a public authenticated API.
+`FEEDMERGE_STAGING=1` refuses writes and disables collection, AI, maintenance jobs,
+retention and media pruning for migration verification. Staging still initializes
+its own copied database schema; never use it against the authoritative file.
+
+Run `scripts/relay.mjs` locally with `FEEDMERGE_UPSTREAM` set to the private backend
+URL. It preserves the existing localhost viewer, MCP and extension address, rejects
+foreign Host headers and returns 503 when the backend is unavailable. It owns no
+database or background collectors. Browser collection still needs a logged-in
+Chrome profile with the extension enabled on whichever machine collects it.
+
+For standby backups, `scripts/backup-bridge.mjs` requires explicit
+`FEEDMERGE_BACKUP_BIND`, `FEEDMERGE_BACKUP_CLIENT` and `FEEDMERGE_DB`. It serves only
+consistent SQLite snapshots to the allowed private client IP. Set
+`FEEDMERGE_BACKUP_URL`, or local config `backup.url`, on the standby; the existing
+backup owner verifies integrity before compressing and applying retention. Keep
+this listener private. Remote database snapshots do not mirror a remote media
+cache; machine-specific launchers, profile archives and credentials stay outside
+Git. Chrome profile files can be backed up, but machine-bound encryption means
+copied cookies/password files do not establish that sessions remain signed in.
