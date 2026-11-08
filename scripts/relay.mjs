@@ -1,8 +1,14 @@
 import http from 'node:http';
+import { readFileSync } from 'node:fs';
 const upstream = new URL(process.env.FEEDMERGE_UPSTREAM);
 const port = Number(process.env.FEEDMERGE_PORT || 4747);
+// Same host allow-list as server.mjs: localhost plus the private addresses in config.json
+// (e.g. this device's tailnet name), so the feed stays reachable from your other devices.
+let extraHosts=[];
+try{extraHosts=JSON.parse(readFileSync(process.env.FEEDMERGE_CONFIG||new URL('../config.json',import.meta.url),'utf8')).hosts||[];}catch{}
+const HOSTS=new Set([`127.0.0.1:${port}`,`localhost:${port}`,...extraHosts]);
 const server=http.createServer((req,res)=>{
- if(![`127.0.0.1:${port}`,`localhost:${port}`].includes(req.headers.host)){res.writeHead(403);res.end();return;}
+ if(!HOSTS.has(req.headers.host)){res.writeHead(403);res.end();return;}
  if(process.env.FEEDMERGE_CAPTURE_ENABLED==='0'){
   const pathname=new URL(req.url,'http://localhost').pathname;
   const json=(code,value)=>{res.writeHead(code,{'content-type':'application/json','cache-control':'no-store'});res.end(JSON.stringify(value));};
