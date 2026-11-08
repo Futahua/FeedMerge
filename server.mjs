@@ -62,6 +62,12 @@ create table if not exists items (
 create index if not exists items_first on items(first_seen);
 create index if not exists items_pub on items(published_at);
 create index if not exists items_ai on items(ai_done);
+-- Small indexes for the feed's sorts: shuffle orders by rowid alone, so it can pick its page
+-- from items_shown without reading the posts themselves; the others read in index order.
+create index if not exists items_shown on items(coalesce(json_extract(flags, '$.ad'), 0), platform);
+create index if not exists items_platform on items(platform);
+create index if not exists items_pubseen on items(coalesce(published_at, first_seen));
+create index if not exists items_repeated on items(seen_count, first_seen);
 create virtual table if not exists items_fts using fts5(author, title, text);
 -- Several accounts per site, one per Chrome profile, merged into this one feed. A post is
 -- stored once; item_accounts records which profiles were shown it, profile_accounts which
@@ -216,7 +222,9 @@ function listItems(p) {
   const order = p.get('sort') === 'shuffle' ? `((rowid * ${seed} % 2147483647) * 48271 % 2147483647), rowid` : p.get('sort') === 'published' ? 'coalesce(published_at, first_seen) desc, rowid' : p.get('sort') === 'repeated' ? 'seen_count desc, first_seen desc' : 'first_seen desc, rowid';
   const limit = Math.min(200, Number(p.get('limit')) || 50);
   const offset = Math.max(0, Number(p.get('offset')) || 0);
-  const sql = `select * from items ${where.length ? 'where ' + where.join(' and ') : ''} order by ${order} limit ${limit} offset ${offset}`;
+  // Pick the page's row ids first (from indexes where possible), then read only those posts:
+  // sorting whole posts made every non-default order take seconds on the server.
+  const sql = `select * from items where rowid in (select rowid from items ${where.length ? 'where ' + where.join(' and ') : ''} order by ${order} limit ${limit} offset ${offset}) order by ${order}`;
   return attachLabels(db.prepare(sql).all(...args).map(rowOut));
 }
 
