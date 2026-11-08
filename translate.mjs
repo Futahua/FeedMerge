@@ -52,9 +52,9 @@ export async function translateBatch(texts, fetchImpl = fetch) {
 const skip = lang => !lang || lang === 'en' || lang === 'vi' || lang === 'und';
 const same = (a, b) => String(a || '').replace(/\s+/g, ' ').trim().toLowerCase() === String(b || '').replace(/\s+/g, ' ').trim().toLowerCase();
 
-export function startTranslator(db, log, readConfig, { fetchImpl = fetch, intervalMs = 20000 } = {}) {
+export function startTranslator(db, log, readConfig, { fetchImpl = fetch, intervalMs = 10000 } = {}) {
   initTranslations(db);
-  const pick = db.prepare('select rowid rid, id, author, title, text from items where tr_done = 0 order by first_seen desc limit 300');
+  const pick = db.prepare('select rowid rid, id, author, title, text from items where tr_done = 0 order by first_seen desc');
   const done = db.prepare('update items set tr_done = ?, tr_from = ?, tr_title = ?, tr_text = ? where id = ?');
   const ftsDel = db.prepare('delete from items_fts where rowid = ?');
   const ftsIns = db.prepare('insert into items_fts(rowid, author, title, text) values (?, ?, ?, ?)');
@@ -66,12 +66,13 @@ export function startTranslator(db, log, readConfig, { fetchImpl = fetch, interv
     try {
       // Posts that need no request are settled right away; the rest go in one batched request.
       const batch = [];
-      let size = 0;
-      for (const r of pick.all()) {
+      let size = 0, full = false;
+      for (const r of pick.iterate()) {
         const title = r.title || '', text = r.text || '';
         if (!(title + text).trim() || isVietnamese(title, text) || looksEnglish(`${title}\n${text}`)) { done.run(1, null, null, null, r.id); continue; }
+        if (full) continue;
         const n = Math.min(title.length, PER_TEXT) + Math.min(text.length, PER_TEXT);
-        if (batch.length && (batch.length * 2 + 2 > TEXTS || size + n > PER_REQUEST)) break;
+        if (batch.length && (batch.length * 2 + 2 > TEXTS || size + n > PER_REQUEST)) { full = true; continue; }
         batch.push(r); size += n;
       }
       if (!batch.length) return 0;
