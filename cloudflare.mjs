@@ -204,7 +204,10 @@ export function startCloudflare(db, readConfig, log, hooks = {}) {
 // at least two authors and either two platforms or three posts.
 export function embeddingStories(db, log, threshold = 0.82) {
   const since = Date.now() - 4 * 864e5;
-  const edges = db.prepare(`select a, b, sim from story_edges where sim >= ? and a in (select id from items where first_seen > ?) and b in (select id from items where first_seen > ?)`).all(threshold, since, since);
+  // Read the links first and look up their two posts: with two "in (recent posts)" lists SQLite
+  // tried every pair of recent posts, which blocked the whole server for about a minute.
+  const edges = db.prepare(`select e.a, e.b, e.sim from story_edges e cross join items x on x.id = e.a cross join items y on y.id = e.b
+    where e.sim >= ? and x.first_seen > ? and y.first_seen > ?`).all(threshold, since, since);
   const parent = new Map();
   const find = x => { let p = parent.get(x) ?? x; if (p !== x) { p = find(p); parent.set(x, p); } return p; };
   for (const e of edges) { const ra = find(e.a), rb = find(e.b); if (ra !== rb) parent.set(ra, rb); }
