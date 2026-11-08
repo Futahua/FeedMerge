@@ -248,3 +248,8 @@ this listener private. Remote database snapshots do not mirror a remote media
 cache; machine-specific launchers, profile archives and credentials stay outside
 Git. Chrome profile files can be backed up, but machine-bound encryption means
 copied cookies/password files do not establish that sessions remain signed in.
+
+Set `FEEDMERGE_CAPTURE_ENABLED=0` on a viewer-only machine's relay to refuse
+capture submissions and return disabled social refresh policies and no browser
+source work. Viewer and MCP traffic still reach the backend. This setting is
+machine-local; it does not disable collection on the designated backend machine.
