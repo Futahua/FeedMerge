@@ -4,6 +4,7 @@
 // request, and it reports each text's language. Vietnamese and obviously English posts never
 // leave the machine. tr_done: 0 pending, 1 handled, -1 gave up on this post.
 import { isVietnamese } from './retention.mjs';
+import { transaction } from './sqlite-transaction.mjs';
 
 // Two hosts serve the same endpoint with separate rate limits; the second is the fallback.
 const ENDPOINTS = ['https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=auto&tl=en',
@@ -65,16 +66,18 @@ export function startTranslator(db, log, readConfig, { fetchImpl = fetch, interv
     let translated = 0;
     try {
       // Posts that need no request are settled right away; the rest go in one batched request.
-      const batch = [];
+      const batch = [], settled = [];
       let size = 0, full = false;
-      for (const r of pick.iterate()) {
+      for (const r of pick.all()) {
         const title = r.title || '', text = r.text || '';
-        if (!(title + text).trim() || isVietnamese(title, text) || looksEnglish(`${title}\n${text}`)) { done.run(1, null, null, null, r.id); continue; }
+        if (!(title + text).trim() || isVietnamese(title, text) || looksEnglish(`${title}\n${text}`)) { settled.push(r.id); continue; }
         if (full) continue;
         const n = Math.min(title.length, PER_TEXT) + Math.min(text.length, PER_TEXT);
         if (batch.length && (batch.length * 2 + 2 > TEXTS || size + n > PER_REQUEST)) { full = true; continue; }
         batch.push(r); size += n;
       }
+      // One write for all of them: thousands of separate writes stalled the server.
+      if (settled.length) transaction(db, () => { for (const id of settled) done.run(1, null, null, null, id); });
       if (!batch.length) return 0;
       let res;
       try { res = await translateBatch(batch.flatMap(r => [r.title || '', r.text || '']), fetchImpl); }
@@ -84,7 +87,7 @@ export function startTranslator(db, log, readConfig, { fetchImpl = fetch, interv
         log('translate failed:', e.message);
         return 0;
       }
-      batch.forEach((r, k) => {
+      transaction(db, () => batch.forEach((r, k) => {
         const t = res[2 * k], x = res[2 * k + 1];
         // The language of the longer field speaks for the post.
         const lang = (r.text || '').length >= (r.title || '').length ? (x.lang || t.lang) : (t.lang || x.lang);
@@ -95,7 +98,7 @@ export function startTranslator(db, log, readConfig, { fetchImpl = fetch, interv
         // Search finds the English the viewer shows.
         ftsDel.run(r.rid); ftsIns.run(r.rid, r.author || '', title || '', text || '');
         translated++;
-      });
+      }));
     } finally { busy = false; }
     if (translated) log('translated', translated);
     return translated;
