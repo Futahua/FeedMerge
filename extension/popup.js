@@ -26,14 +26,16 @@ document.getElementById('rf').onchange = async e => { const p = e.target.dataset
 document.getElementById('rfNow').onclick = async e => { e.target.disabled = true; e.target.textContent = 'Started — one feed per minute'; await chrome.runtime.sendMessage({ type: 'refresh-now' }); renderRefresh(); };
 renderRefresh();
 
-// Sites added in FeedMerge that only a browser can read: Chrome must allow each one once.
+// Sites added in FeedMerge that only a browser can read. One Allow covers every website, so
+// sources added later need no further approval; only the sites added as sources are read.
+const ALL_SITES = ['https://*/*', 'http://*/*'];
 chrome.runtime.sendMessage({ type: 'render-needs' }).then(hosts => {
   if (!hosts?.length) return;
   const box = document.getElementById('access');
-  box.innerHTML = `<div class="muted" style="margin-top:8px">These sources are apps only a browser can read. Let FeedMerge read: <b></b></div><button class="primary">Allow</button>`;
+  box.innerHTML = `<div class="muted" style="margin-top:8px">These sources are apps only a browser can read: <b></b>. Allow once and FeedMerge can read any source you add, now or later.</div><button class="primary">Allow</button>`;
   box.querySelector('b').textContent = hosts.join(', ');
   box.querySelector('button').onclick = async () => {
-    const ok = await chrome.permissions.request({ origins: hosts.map(h => `https://${h}/*`) });
+    const ok = await chrome.permissions.request({ origins: ALL_SITES });
     box.innerHTML = `<div class="muted" style="margin-top:8px">${ok ? 'Allowed. They are read on the next background refresh.' : 'Not allowed.'}</div>`;
   };
 });
