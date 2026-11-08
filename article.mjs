@@ -36,7 +36,11 @@ export function articleBlocks(html, url) {
     if (tag === 'img' || tag === 'picture') {
       const im = tag === 'img' ? el : el.querySelector('img');
       const src = absolute(im?.getAttribute('data-src') || im?.getAttribute('src'), url);
-      if (src && !seenImg.has(src) && !/^data:/.test(src)) {
+      // Icons, logos and badges (an author silhouette, an "Ask AI" badge) are not article pictures: SVGs, and
+      // anything the page itself sizes under 100 px, would otherwise be drawn as a full-width image.
+      const w = Number(im?.getAttribute('width')) || 0, h = Number(im?.getAttribute('height')) || 0;
+      const icon = /.svg(?:[?#]|$)/i.test(src || '') || (w && w < 100) || (h && h < 100);
+      if (src && !icon && !seenImg.has(src) && !/^data:/.test(src)) {
         seenImg.add(src);
         blocks.push({ t: 'img', src, w: Number(im.getAttribute('width')) || undefined, h: Number(im.getAttribute('height')) || undefined, alt: clean(im.getAttribute('alt')) || undefined });
       }
@@ -68,8 +72,19 @@ export function articleBlocks(html, url) {
     while (j < blocks.length && blocks[j].t === 'li' && blocks[j].text.length < 30) j++;
     if (j - i >= 4) { blocks.splice(i, j - i); i--; }
   }
-  // Too little text to be an article (a menu, a cookie notice): nothing to show.
+  // "Log in / sign up to read" notices are the site's, not the article's.
+  const gate = /đăng nhập|đăng ký|log ?in|sign (?:in|up)|subscribe/i;
+  for (let i = blocks.length - 1; i >= 0; i--) if (blocks[i].text && blocks[i].text.length < 300 && gate.test(blocks[i].text)) blocks.splice(i, 1);
+  // Before the first real paragraph, short lines are page furniture: buttons ("Save", "Print"), font-size
+  // controls, dates, bylines, field labels. Pictures there (the lead photo) stay.
+  const first = blocks.findIndex(b => b.t === 'p' && b.text.length >= 80);
+  if (first > 0) for (let i = first - 1; i >= 0; i--) if (blocks[i].t !== 'img') blocks.splice(i, 1);
+  // Too little real writing to be an article (a menu, a cookie notice, a login-gated document page): nothing to show.
   if (blocks.reduce((n, b) => n + (b.text?.length || 0), 0) < 200) return null;
+  // A paragraph opening with the headline's first words repeats the title (document portals print it several times).
+  const lead = norm(pageTitle).split(' ').slice(0, 3).join(' ');
+  const titled = t => lead.length >= 8 && norm(t).startsWith(lead);
+  if (blocks.filter(b => b.t === 'p' && b.text.length >= 120 && !titled(b.text)).reduce((n, b) => n + b.text.length, 0) < 400) return null;
   return { title: clean(parsed.title), byline: clean(parsed.byline) || undefined, site: clean(parsed.siteName) || undefined, blocks };
 }
 
