@@ -1,12 +1,14 @@
 // Posts in languages other than English and Vietnamese are shown in English, with a note of
 // the original language; the original stays stored (so re-captures and filters still work)
-// but is not shown. Uses Google Translate's free web endpoint: hosted, no key, and it
-// reports the source language. Vietnamese and obviously English posts never leave the
-// machine. tr_done: 0 pending, 1 handled, -1 gave up on this post.
+// but is not shown. Uses Google Translate's free web endpoint: hosted, no key, many texts per
+// request, and it reports each text's language. Vietnamese and obviously English posts never
+// leave the machine. tr_done: 0 pending, 1 handled, -1 gave up on this post.
 import { isVietnamese } from './retention.mjs';
 
-const ENDPOINT = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t';
-const CHUNK = 4500;
+// Two hosts serve the same endpoint with separate rate limits; the second is the fallback.
+const ENDPOINTS = ['https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=auto&tl=en',
+  'https://translate.googleapis.com/translate_a/t?client=gtx&sl=auto&tl=en'];
+const PER_TEXT = 10000, PER_REQUEST = 30000, TEXTS = 60;
 const names = new Intl.DisplayNames(['en'], { type: 'language' });
 export const languageName = code => { try { return names.of(code) || code; } catch { return code; } };
 
@@ -23,61 +25,36 @@ export function looksEnglish(s) {
   return (s.match(COMMON) || []).length / words.length >= 0.12;
 }
 
-// Split on paragraph breaks (then lines, then hard cuts) into requests Google accepts.
-function chunks(text) {
-  const out = [];
-  let cur = '';
-  for (const piece of text.split(/(?<=\n\n)/)) {
-    for (let p = piece; p; ) {
-      const room = CHUNK - cur.length;
-      if (p.length <= room) { cur += p; p = ''; }
-      else if (cur) { out.push(cur); cur = ''; }
-      else { out.push(p.slice(0, CHUNK)); p = p.slice(CHUNK); }
-    }
+// One request for many texts: [{ text, lang }] in the same order. Empty texts are not sent.
+export async function translateBatch(texts, fetchImpl = fetch) {
+  const sent = texts.map((t, i) => [i, t]).filter(([, t]) => t && t.trim());
+  const out = texts.map(t => ({ text: t, lang: null }));
+  if (!sent.length) return out;
+  const body = new URLSearchParams();
+  for (const [, t] of sent) body.append('q', t.slice(0, PER_TEXT));
+  let j, last;
+  for (const url of ENDPOINTS) {
+    const res = await fetchImpl(url, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded;charset=UTF-8' }, body, signal: AbortSignal.timeout(30000) });
+    if (res.ok) { j = await res.json(); break; }
+    last = res.status;
   }
-  if (cur) out.push(cur);
+  if (!j) { const e = new Error(`translate HTTP ${last}`); e.retry = true; throw e; }
+  // A single text comes back as [text, lang] rather than [[text, lang]].
+  const rows = sent.length === 1 && typeof j[0] === 'string' ? [j] : j;
+  if (!Array.isArray(rows) || rows.length !== sent.length) throw new Error('translate: unexpected reply');
+  sent.forEach(([i, t], k) => {
+    const row = rows[k];
+    out[i] = Array.isArray(row) ? { text: String(row[0] ?? t), lang: typeof row[1] === 'string' ? row[1] : null } : { text: String(row ?? t), lang: null };
+  });
   return out;
 }
 
-// Returns { lang, segments: [[translated, original], ...] } for the whole text.
-export async function translateText(text, fetchImpl = fetch) {
-  let lang = null;
-  const segments = [];
-  for (const part of chunks(text)) {
-    const res = await fetchImpl(ENDPOINT, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded;charset=UTF-8' }, body: new URLSearchParams({ q: part }), signal: AbortSignal.timeout(20000) });
-    if (!res.ok) { const e = new Error(`translate HTTP ${res.status}`); e.retry = true; throw e; }
-    const j = await res.json();
-    if (!Array.isArray(j?.[0])) throw new Error('translate: unexpected reply');
-    lang ??= typeof j[2] === 'string' ? j[2] : null;
-    for (const s of j[0]) if (typeof s?.[0] === 'string') segments.push([s[0], typeof s[1] === 'string' ? s[1] : '']);
-  }
-  return { lang, segments };
-}
-
-// Translate several fields in one request and give each its own translation back, using
-// the original text Google echoes for every sentence to find where each field ends.
-export async function translateFields(fields, fetchImpl = fetch) {
-  const sep = '\n\n';
-  const { lang, segments } = await translateText(fields.join(sep), fetchImpl);
-  const ends = [];
-  let at = 0;
-  for (const f of fields) { at += f.length; ends.push(at); at += sep.length; }
-  const out = fields.map(() => '');
-  let pos = 0;
-  for (const [tr, orig] of segments) {
-    let i = ends.findIndex(e => pos < e);
-    if (i < 0) i = fields.length - 1;
-    out[i] += tr;
-    pos += orig.length;
-  }
-  return { lang, fields: out.map(s => s.replace(/^\s+|\s+$/g, '')) };
-}
-
 const skip = lang => !lang || lang === 'en' || lang === 'vi' || lang === 'und';
+const same = (a, b) => String(a || '').replace(/\s+/g, ' ').trim().toLowerCase() === String(b || '').replace(/\s+/g, ' ').trim().toLowerCase();
 
-export function startTranslator(db, log, readConfig, { fetchImpl = fetch, intervalMs = 20000, gapMs = 1200 } = {}) {
+export function startTranslator(db, log, readConfig, { fetchImpl = fetch, intervalMs = 20000 } = {}) {
   initTranslations(db);
-  const pick = db.prepare('select rowid rid, id, author, title, text from items where tr_done = 0 order by first_seen desc limit 200');
+  const pick = db.prepare('select rowid rid, id, author, title, text from items where tr_done = 0 order by first_seen desc limit 300');
   const done = db.prepare('update items set tr_done = ?, tr_from = ?, tr_title = ?, tr_text = ? where id = ?');
   const ftsDel = db.prepare('delete from items_fts where rowid = ?');
   const ftsIns = db.prepare('insert into items_fts(rowid, author, title, text) values (?, ?, ?, ?)');
@@ -85,29 +62,39 @@ export function startTranslator(db, log, readConfig, { fetchImpl = fetch, interv
   async function tick() {
     if (busy || Date.now() < pausedUntil || readConfig().translation?.enabled === false) return 0;
     busy = true;
-    let translated = 0, sent = 0;
+    let translated = 0;
     try {
-      // Posts that need no request are settled right away; at most 25 requests per round.
+      // Posts that need no request are settled right away; the rest go in one batched request.
+      const batch = [];
+      let size = 0;
       for (const r of pick.all()) {
         const title = r.title || '', text = r.text || '';
         if (!(title + text).trim() || isVietnamese(title, text) || looksEnglish(`${title}\n${text}`)) { done.run(1, null, null, null, r.id); continue; }
-        if (sent++ >= 25) break;
-        let out;
-        try { out = await translateFields([title, text], fetchImpl); }
-        catch (e) {
-          if (e.retry || e.name === 'TimeoutError' || e.name === 'TypeError') { pausedUntil = Date.now() + 10 * 60e3; log('translate paused 10 min:', e.message); break; }
-          done.run(-1, null, null, null, r.id); continue;
-        }
-        const [t, x] = out.fields;
-        // Hashtags, names and links come back unchanged: nothing was translated.
-        const same = (a, b) => a.replace(/\s+/g, ' ').trim().toLowerCase() === b.replace(/\s+/g, ' ').trim().toLowerCase();
-        if (skip(out.lang) || (same(t, title) && same(x, text))) { done.run(1, null, null, null, r.id); continue; }
-        done.run(1, out.lang, title ? t : null, text ? x : null, r.id);
-        // Search finds the English the viewer shows.
-        ftsDel.run(r.rid); ftsIns.run(r.rid, r.author || '', title ? t : '', text ? x : '');
-        translated++;
-        if (gapMs) await new Promise(f => setTimeout(f, gapMs));
+        const n = Math.min(title.length, PER_TEXT) + Math.min(text.length, PER_TEXT);
+        if (batch.length && (batch.length * 2 + 2 > TEXTS || size + n > PER_REQUEST)) break;
+        batch.push(r); size += n;
       }
+      if (!batch.length) return 0;
+      let res;
+      try { res = await translateBatch(batch.flatMap(r => [r.title || '', r.text || '']), fetchImpl); }
+      catch (e) {
+        if (e.retry || e.name === 'TimeoutError' || e.name === 'TypeError') { pausedUntil = Date.now() + 10 * 60e3; log('translate paused 10 min:', e.message); return 0; }
+        for (const r of batch) done.run(-1, null, null, null, r.id);
+        log('translate failed:', e.message);
+        return 0;
+      }
+      batch.forEach((r, k) => {
+        const t = res[2 * k], x = res[2 * k + 1];
+        // The language of the longer field speaks for the post.
+        const lang = (r.text || '').length >= (r.title || '').length ? (x.lang || t.lang) : (t.lang || x.lang);
+        // Hashtags, names and links come back unchanged: nothing was translated.
+        if (skip(lang) || (same(t.text, r.title) && same(x.text, r.text))) { done.run(1, null, null, null, r.id); return; }
+        const title = r.title ? t.text : null, text = r.text ? x.text : null;
+        done.run(1, lang, title, text, r.id);
+        // Search finds the English the viewer shows.
+        ftsDel.run(r.rid); ftsIns.run(r.rid, r.author || '', title || '', text || '');
+        translated++;
+      });
     } finally { busy = false; }
     if (translated) log('translated', translated);
     return translated;
@@ -123,12 +110,10 @@ export async function translatedArticle(db, item, article, fetchImpl = fetch) {
   if (hit) return JSON.parse(hit.article);
   const texts = [article.title || '', ...article.blocks.map(b => b.text || b.alt || '')];
   const parts = [];
-  // Several requests at most: group blocks so each request stays under the size limit.
   for (let i = 0; i < texts.length; ) {
     let j = i, size = 0;
-    while (j < texts.length && (j === i || size + texts[j].length + 2 < CHUNK)) size += texts[j++].length + 2;
-    const group = texts.slice(i, j);
-    parts.push(...(group.some(s => s.trim()) ? (await translateFields(group, fetchImpl)).fields : group));
+    while (j < texts.length && j - i < TEXTS && (j === i || size + texts[j].length < PER_REQUEST)) size += texts[j++].length;
+    parts.push(...(await translateBatch(texts.slice(i, j), fetchImpl)).map(r => r.text));
     i = j;
   }
   const out = { ...article, title: parts[0] || article.title, translatedFrom: languageName(item.tr_from),

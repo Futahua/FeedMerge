@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { balanceWebLanguages, isVietnamese, admitsWebPost } from '../retention.mjs';
-import { translateFields, looksEnglish, startTranslator, initTranslations, translatedArticle } from '../translate.mjs';
+import { translateBatch, looksEnglish, startTranslator, initTranslations, translatedArticle } from '../translate.mjs';
 
 const VI = 'Thủ tướng chỉ đạo đẩy mạnh giải ngân vốn đầu tư công trong năm nay';
 const ES = 'El presidente anunció nuevas medidas económicas para el próximo año';
@@ -70,22 +70,28 @@ test('the ingest gate keeps a stable share of posts', () => {
   assert(ids.every(id => admitsWebPost(id, 1)));
 });
 
-// A stand-in for Google's reply: echoes each sentence as [translation, original].
+// A stand-in for Google's reply: one [translation, language] per q, or a bare pair for one q.
 const fake = (dict, lang = 'es', calls = []) => async (url, opts) => {
-  const q = new URLSearchParams(opts.body).get('q');
-  calls.push(q);
-  const sentences = q.match(/[^\n.?!]+[.?!]?\s*|\n+/g) || [];
-  return { ok: true, json: async () => [sentences.map(s => [dict[s.trim()] ? s.replace(s.trim(), dict[s.trim()]) : s, s]), null, lang] };
+  const qs = new URLSearchParams(opts.body).getAll('q');
+  calls.push(qs);
+  const rows = qs.map(q => [dict[q] ?? q, lang]);
+  return { ok: true, json: async () => (rows.length === 1 ? rows[0] : rows) };
 };
 
-test('title and text come back separately from one request', async () => {
+test('many texts go in one request and come back in order, empty ones untouched', async () => {
   const calls = [];
-  const r = await translateFields(['Hola mundo.', 'Primera frase. Segunda frase.\n\nOtro párrafo.'], fake({ 'Hola mundo.': 'Hello world.', 'Primera frase.': 'First sentence.', 'Segunda frase.': 'Second sentence.', 'Otro párrafo.': 'Another paragraph.' }, 'es', calls));
+  const r = await translateBatch(['Hola mundo.', '', 'Otro párrafo.\n\nY más.'], fake({ 'Hola mundo.': 'Hello world.', 'Otro párrafo.\n\nY más.': 'Another paragraph.\n\nAnd more.' }, 'es', calls));
   assert.equal(calls.length, 1);
-  assert.equal(r.lang, 'es');
-  assert.deepEqual(r.fields, ['Hello world.', 'First sentence. Second sentence.\n\nAnother paragraph.']);
-  const empty = await translateFields(['', 'Hola mundo.'], fake({ 'Hola mundo.': 'Hello world.' }));
-  assert.deepEqual(empty.fields, ['', 'Hello world.']);
+  assert.deepEqual(calls[0], ['Hola mundo.', 'Otro párrafo.\n\nY más.']);
+  assert.deepEqual(r, [{ text: 'Hello world.', lang: 'es' }, { text: '', lang: null }, { text: 'Another paragraph.\n\nAnd more.', lang: 'es' }]);
+  assert.deepEqual(await translateBatch(['Hola.'], fake({ 'Hola.': 'Hi.' })), [{ text: 'Hi.', lang: 'es' }]);
+});
+
+test('a refused host falls back to the other one', async () => {
+  const hosts = [];
+  const r = await translateBatch(['Hola.'], async (url, opts) => { hosts.push(new URL(url).host); return hosts.length === 1 ? { ok: false, status: 429 } : fake({ 'Hola.': 'Hi.' })(url, opts); });
+  assert.deepEqual(hosts, ['clients5.google.com', 'translate.googleapis.com']);
+  assert.equal(r[0].text, 'Hi.');
 });
 
 test('English detection', () => {
@@ -103,9 +109,10 @@ test('translator shows foreign posts in English, skips English and Vietnamese, a
   db.add('Blog', 'Bonjour.', { id: 'fr-en', text: '' });
   db.add('Threads', '#PersijaDay', { id: 'tag' }); // comes back unchanged: not marked as translated
   const calls = [];
-  const tr = startTranslator(db, () => {}, () => ({}), { fetchImpl: fake({ 'Hola mundo.': 'Hello world.', 'Otro párrafo.': 'Another paragraph.', 'Bonjour.': 'Hello.' }, 'es', calls), intervalMs: 0, gapMs: 0 });
+  const tr = startTranslator(db, () => {}, () => ({}), { fetchImpl: fake({ 'Hola mundo.': 'Hello world.', 'Otro párrafo.': 'Another paragraph.', 'Bonjour.': 'Hello.' }, 'es', calls), intervalMs: 0 });
   assert.equal(await tr.tick(), 2);
-  assert.equal(calls.length, 3, 'English and Vietnamese posts are not sent');
+  assert.equal(calls.length, 1, 'one request for the whole batch');
+  assert.deepEqual(calls[0].sort(), ['#PersijaDay', 'Bonjour.', 'Hola mundo.', 'Otro párrafo.'], 'English and Vietnamese posts are not sent');
   assert.equal(db.prepare("select tr_from from items where id = 'tag'").get().tr_from, null);
   const es = db.prepare("select * from items where id = 'es1'").get();
   assert.deepEqual([es.tr_from, es.tr_title, es.tr_text, es.title], ['es', 'Hello world.', 'Another paragraph.', 'Hola mundo.']);
@@ -120,7 +127,7 @@ test('translator pauses when the service refuses, leaving posts pending', async 
   const db = feed();
   initTranslations(db);
   db.add('El País', ES, { id: 'es1' });
-  const tr = startTranslator(db, () => {}, () => ({}), { fetchImpl: async () => ({ ok: false, status: 429 }), intervalMs: 0, gapMs: 0 });
+  const tr = startTranslator(db, () => {}, () => ({}), { fetchImpl: async () => ({ ok: false, status: 429 }), intervalMs: 0 });
   assert.equal(await tr.tick(), 0);
   assert.equal(db.prepare("select tr_done from items where id = 'es1'").get().tr_done, 0);
 });
