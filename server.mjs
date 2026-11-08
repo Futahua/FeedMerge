@@ -14,7 +14,7 @@ import { initCategories, startCategorizer } from './categorize.mjs';
 import { initCloudflare, startCloudflare, embeddingStories, cloudflareConfig } from './cloudflare.mjs';
 import { transaction } from './sqlite-transaction.mjs';
 import { reparseCaptures } from './reparse.mjs';
-import { expire, retentionSettings, NAVIGATION, purgeExcluded } from './retention.mjs';
+import { expire, retentionSettings, NAVIGATION, purgeExcluded, balanceWebLanguages, isVietnamese, admitsWebPost } from './retention.mjs';
 import { createManagement } from './management.mjs';
 import { initArticles, getArticle } from './article.mjs';
 import { checkedDestination } from './source-fetch.mjs';
@@ -22,6 +22,7 @@ import { normalizeRules, filterSourceLinks } from './source-rules.mjs';
 import { applyControlOverrides, controlCatalog } from './backend-controls.mjs';
 import { SYSTEM as CHAT_SYSTEM } from './ai.mjs';
 import {initContentPreferences,contentExclusionSql,compileExclusions} from './content-preferences.mjs';
+import { initTranslations, startTranslator, translatedArticle, languageName } from './translate.mjs';
 import { startWikipedia } from './wikipedia.mjs';
 
 const DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -83,6 +84,7 @@ initCategories(db);
 settingsDb = db;
 initCloudflare(db);
 initContentPreferences(db);
+initTranslations(db);
 const management = createManagement(db,readConfig);
 let poller = null;
 let categorizer = null;
@@ -102,6 +104,7 @@ const q = {
                    media = case when media is null or media = '[]' then ? else media end, published_at = coalesce(published_at, ?) where id = ?`),
   ftsIns: db.prepare('insert into items_fts(rowid, author, title, text) values (?, ?, ?, ?)'),
   ftsDel: db.prepare('delete from items_fts where rowid = ?'),
+  trAgain: db.prepare('update items set tr_done = 0, tr_from = null, tr_title = null, tr_text = null where id = ?'),
 };
 
 const s = v => (v == null ? null : String(v));
@@ -119,6 +122,9 @@ function ingest(cap, keepRaw = true, strict = false) {
   const seen = new Set();
   const exclude=compileExclusions(readConfig().content);
   const wasRemoved=db.prepare('select id from content_removed where id=?');
+  // Share of new other-language web posts to keep, set by the hourly language balance.
+  let webAdmit = 1;
+  try { webAdmit = Number(db.prepare("select v from meta where k = 'web_other_admit'").get()?.v ?? 1); } catch {}
   let added = 0;
   transaction(db, () => {
     for (const it of items) {
@@ -129,6 +135,8 @@ function ingest(cap, keepRaw = true, strict = false) {
       if (seen.has(it.id)) continue;
       seen.add(it.id);
       const ex = q.get.get(it.id);
+      if (!ex && it.platform === 'web' && !String(it.context || '').startsWith('Wikipedia · ')
+        && !admitsWebPost(it.id, webAdmit) && !isVietnamese(it.title, it.text)) continue;
       if (!ex) {
         const r = q.ins.run(it.id, it.platform, s(it.nativeId), s(it.context), s(it.author), s(it.authorName), s(it.title), s(it.text), s(it.url),
           j(it.media || []), it.publishedAt ?? null, t, t, j(it.metrics || {}), j(it.flags || {}));
@@ -137,7 +145,7 @@ function ingest(cap, keepRaw = true, strict = false) {
       } else {
         const better = (it.text || '').length > (ex.text || '').length;
         q.upd.run(t, j(it.metrics), better ? it.text : ex.text, j(it.media || []), it.publishedAt ?? null, it.id);
-        if (better) { q.ftsDel.run(ex.rowid); q.ftsIns.run(ex.rowid, s(it.author) || '', s(it.title) || '', it.text); }
+        if (better) { q.ftsDel.run(ex.rowid); q.ftsIns.run(ex.rowid, s(it.author) || '', s(it.title) || '', it.text); q.trAgain.run(it.id); }
       }
       // A rebuild replays captures, so it fixes dates without counting the sighting again.
       if (profile) q.sighting.run(it.id, profile, t, t, keepRaw ? 1 : 0);
@@ -154,7 +162,10 @@ function reparse() {
 function rowOut(r) {
   const p = v => { try { return v ? JSON.parse(v) : null; } catch { return null; } };
   return {
-    id: r.id, platform: r.platform, nativeId: r.native_id, context: r.context, author: r.author, authorName: r.author_name, title: r.title, text: r.text,
+    id: r.id, platform: r.platform, nativeId: r.native_id, context: r.context, author: r.author, authorName: r.author_name,
+    // Translated posts show only their English; the original stays stored for re-captures.
+    title: r.tr_from && r.tr_title != null ? r.tr_title : r.title, text: r.tr_from && r.tr_text != null ? r.tr_text : r.text,
+    ...(r.tr_from ? { translatedFrom: languageName(r.tr_from) } : {}),
     url: r.url, media: p(r.media) || [], publishedAt: r.published_at, firstSeen: r.first_seen, lastSeen: r.last_seen,
     seenCount: r.seen_count, metrics: p(r.metrics) || {}, flags: p(r.flags) || {}, labels: [], saved: !!r.saved,
   };
@@ -298,6 +309,7 @@ setInterval(pruneMedia, 3600e3).unref();
 function runRetention() {
   if (STAGING) return;
   try { const r = expire(db); if (r.posts || r.raw) log('retention', JSON.stringify(r)); } catch (e) { log('retention failed', e.message); }
+  try { const r = balanceWebLanguages(db, readConfig().retention?.webVietnamesePercent ?? 67); if (r.removed) log('language balance', JSON.stringify(r)); } catch (e) { log('language balance failed', e.message); }
 }
 setTimeout(runRetention, 30e3).unref();
 setInterval(runRetention, 3600e3).unref();
@@ -395,9 +407,11 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'GET' && u.pathname === '/api/items') return send(res, 200, listItems(u.searchParams));
     if (req.method === 'GET' && u.pathname === '/api/article') {
-      const item = db.prepare("select id, url from items where id = ? and platform = 'web'").get(u.searchParams.get('id') || '');
+      const item = db.prepare("select id, url, tr_from from items where id = ? and platform = 'web'").get(u.searchParams.get('id') || '');
       if (!item?.url) return send(res, 404, { error: 'not a web post' });
-      return send(res, 200, await getArticle(db, item));
+      const article = await getArticle(db, item);
+      try { return send(res, 200, await translatedArticle(db, item, article)); }
+      catch (e) { log('article translate', e.message); return send(res, 200, article); }
     }
     const fullPost = /^\/api\/items\/(.+)$/.exec(u.pathname);
     if (req.method === 'GET' && fullPost) {
@@ -555,6 +569,7 @@ server.listen(PORT, BIND, () => {
   });
   cf = startCloudflare(db, readConfig, log, { onEmbedded: () => categorizer.recluster() });
   wiki = startWikipedia(db, ingest, log, readConfig, cf);
+  startTranslator(db, log, readConfig);
   // Reuse the management queue; never automatically rerun interrupted side effects.
   db.prepare("update agent_job_runs set status='interrupted',finished=?,error='Server restarted during work; inspect before retrying.' where status='running'").run(Date.now());
   let backendBusy=false;

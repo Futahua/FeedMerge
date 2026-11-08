@@ -177,6 +177,9 @@
 .car .dots i { width: 6px; height: 6px; border-radius: 50%; background: rgb(255 255 255 / .45); }
 .car .dots i.on { background: #fff; }
 
+/* Posts shown in English translation */
+.tr-note { padding: 0 16px 10px; font-size: 12px; font-style: italic; opacity: .65; }
+
 /* ---------- Web articles ---------- */
 .web-head { display: flex; gap: 8px; align-items: center; padding: 12px 16px 6px; font-size: 13px; }
 .fav { width: 16px; height: 16px; border-radius: 3px; }

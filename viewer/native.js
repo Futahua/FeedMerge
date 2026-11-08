@@ -427,7 +427,8 @@
 
   function render(it, extra) {
     const r = R[it.platform] || R.web;
-    return `<article class="card n p-${esc(it.platform)}" data-id="${esc(it.id)}"><div class="n-body">${r(it)}</div>${extra || ''}</article>`;
+    const note = it.translatedFrom ? `<div class="tr-note">Translated from ${esc(it.translatedFrom)}</div>` : '';
+    return `<article class="card n p-${esc(it.platform)}" data-id="${esc(it.id)}"><div class="n-body">${r(it)}</div>${note}${extra || ''}</article>`;
   }
 
   function handleClick(e, it, card) {
