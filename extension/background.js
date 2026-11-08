@@ -73,7 +73,7 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
 });
 
 // ---------- Background refresh ----------
-// Loads each feed in a muted, minimized window on a jittered schedule so captures keep coming
+// Loads each feed in a muted, inactive tab on a jittered schedule so captures keep coming
 // without you opening the sites. One feed at a time; nothing is clicked, liked or followed.
 const TARGETS = {
   reddit: { url: 'https://www.reddit.com/', hours: 2 },
@@ -110,6 +110,17 @@ async function refreshState() {
 const saveRefresh = refresh => chrome.storage.local.set({ refresh });
 const jitter = hours => hours * 3600e3 * (0.8 + Math.random() * 0.4);
 
+async function createRefreshTab(url) {
+  // Never create/restore/focus a window. Stay in this profile's regular windows;
+  // if there are none, the pending refresh waits for the user to open Chrome.
+  const windows=(await chrome.windows.getAll({windowTypes:['normal']})).filter(w=>!w.incognito);
+  const win=windows.find(w=>w.focused)||windows.find(w=>w.state!=='minimized')||windows[0];
+  if(!win)return null;
+  const tab=await chrome.tabs.create({windowId:win.id,url:'about:blank',active:false});
+  await chrome.tabs.update(tab.id,{muted:true,autoDiscardable:false,active:false,url});
+  return tab;
+}
+
 async function finishOpen() {
   const { openRefresh } = await chrome.storage.local.get('openRefresh');
   if (!openRefresh) return;
@@ -119,17 +130,8 @@ async function finishOpen() {
 
 async function openRefresh(platform) {
   const refresh = await refreshState();
-  let { refreshWin } = await chrome.storage.local.get('refreshWin');
-  const win = refreshWin != null ? await chrome.windows.get(refreshWin).catch(() => null) : null;
-  let tab;
-  if (win) tab = await chrome.tabs.create({ windowId: win.id, url: 'about:blank', active: true });
-  else {
-    const w = await chrome.windows.create({ url: 'about:blank', state: 'minimized', focused: false });
-    tab = w.tabs[0];
-    await chrome.storage.local.set({ refreshWin: w.id });
-  }
-  await chrome.tabs.update(tab.id, { muted: true, autoDiscardable: false });
-  await chrome.tabs.update(tab.id, { url: TARGETS[platform].url });
+  const tab=await createRefreshTab(TARGETS[platform].url);
+  if(!tab)return;
   await chrome.storage.local.set({ openRefresh: { tabId: tab.id, platform, opened: Date.now() } });
   refresh.last[platform] = Date.now();
   refresh.next[platform] = Date.now() + jitter(refresh.policy?.platforms?.[platform]?.hours ?? refresh.platforms[platform].hours);
@@ -158,7 +160,7 @@ async function refreshTick(force) {
 
 // ---------- Browser-read web sources ----------
 // Sites that are JavaScript apps send the server an empty page. These are opened here, in the
-// same minimized window, and their headline links are read once the page has drawn itself.
+// same inactive-tab path, and their headline links are read once the page has drawn itself.
 // Chrome asks once per site (popup) before the extension may read it.
 const RENDER_WAIT_MS = 12_000;
 
@@ -194,16 +196,8 @@ async function renderedDue() {
 }
 
 async function readRendered(src) {
-  let { refreshWin } = await chrome.storage.local.get('refreshWin');
-  const win = refreshWin != null ? await chrome.windows.get(refreshWin).catch(() => null) : null;
-  let tab;
-  if (win) tab = await chrome.tabs.create({ windowId: win.id, url: 'about:blank', active: true });
-  else {
-    const w = await chrome.windows.create({ url: 'about:blank', state: 'minimized', focused: false });
-    tab = w.tabs[0];
-    await chrome.storage.local.set({ refreshWin: w.id });
-  }
-  await chrome.tabs.update(tab.id, { muted: true, autoDiscardable: false, url: src.url });
+  const tab=await createRefreshTab(src.url);
+  if(!tab)return;
   await chrome.storage.local.set({ openRefresh: { tabId: tab.id, platform: 'web:' + src.id, opened: Date.now() } });
   setTimeout(async () => {
     let body;
