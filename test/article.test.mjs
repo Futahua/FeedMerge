@@ -26,3 +26,10 @@ test('article pages reduce to plain blocks; scripts and handlers never survive',
 test('pages without an article give nothing', () => {
   assert.equal(articleBlocks('<html><body><nav><a href="/">x</a></nav></body></html>', 'https://example.com/'), null);
 });
+
+test('author placeholders without dimensions are excluded while article photos remain', () => {
+  const html = `<html><body><article><h1>Hospital report</h1><img src="https://static.thanhnien.com.vn/thanhnien.vn/image/ava_inter.png" alt="Reporter"><img src="/hospital.jpg" width="660" height="400">${para(1)}${para(2)}${para(3)}</article></body></html>`;
+  const article = articleBlocks(html, 'https://thanhnien.vn/report.html');
+  assert.ok(article);
+  assert.deepEqual(article.blocks.filter(b => b.t === 'img').map(b => b.src), ['https://thanhnien.vn/hospital.jpg']);
+});

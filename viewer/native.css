@@ -191,7 +191,7 @@
 .web-article { max-height: 440px; overflow-y: auto; overscroll-behavior: contain; margin: 0 6px 10px; padding: 2px 10px 4px; border-top: 1px solid var(--c-line); font-size: 14.5px; line-height: 1.55; scrollbar-width: thin; }
 .web-article p { margin: .65em 0; overflow-wrap: anywhere; }
 .web-article h4 { margin: 1em 0 .4em; font-size: 15px; font-weight: 650; }
-.web-article img { display: block; width: 100%; height: auto; max-height: none !important; border-radius: 8px; margin: .6em 0 .2em; background: var(--c-hover); }
+.web-article img { aspect-ratio: auto !important; object-fit: contain; max-width: 100%; display: block; width: 100%; height: auto; max-height: none !important; border-radius: 8px; margin: .6em 0 .2em; background: var(--c-hover); }
 .web-article .cap { margin-top: 0; font-size: 12.5px; color: var(--c-muted); }
 .web-article .li { padding-left: 1em; text-indent: -.7em; }
 .web-article .li::before { content: '•  '; }
@@ -202,8 +202,11 @@
 .embed-bar { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; font-size: 12px; color: var(--c-muted); border-bottom: 1px solid var(--c-line); }
 .embed-bar button { border: 0; background: var(--c-hover); color: var(--c-fg); border-radius: 999px; padding: 3px 10px; cursor: pointer; font: inherit; }
 .embed iframe { display: block; width: 100%; border: 0; background: transparent; }
-.embed iframe.tall { width: 100%; max-width: 405px; height: auto; max-height: 720px; margin: 0 auto; aspect-ratio: 9 / 16; }
-.embed > div:not(.embed-bar) { display: flex; justify-content: center; padding: 4px 8px 8px; }
+.embed-player { position: relative; width: 100%; }
+.embed-player.tall { max-width: 405px; margin: 0 auto; }
+.embed-player > iframe { position: absolute; inset: 0; height: 100%; }
+.embed-player > iframe:fullscreen { width: 100%; height: 100%; }
+.embed > div:not(.embed-bar, .embed-player) { display: flex; justify-content: center; padding: 4px 8px 8px; }
 
 /* ---------- FeedMerge strip under each card: category chips + meta ---------- */
 .fm-strip { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 14px 10px; border-top: 1px solid var(--c-line); background: var(--c-bg); font-size: 12px; color: var(--c-muted); }

@@ -69,7 +69,7 @@ function renderCard(it) {
 }
 
 async function load(reset) {
-  if (state.loading || (state.done && !reset)) return;
+  if (state.loading || (!reset && (state.done || layoutPaused()))) return;
   state.loading = true;
   if (reset) { state.offset = 0; state.done = false; $('#feed').innerHTML = ''; items.clear(); }
   $('#more').textContent = 'Loading…';
@@ -236,6 +236,12 @@ $('#menu').setAttribute('aria-expanded', 'false');
 // fill across and down. Ctrl+scroll changes the column width; every visible card
 // animates from where it was to where it lands.
 const feedEl = $('#feed'), GAP = 14, ROW = 4;
+const pendingFullscreenCards = new Set();
+let normalScrollY = scrollY, fullscreenScrollY = null;
+const layoutPaused = () => fullscreenScrollY !== null || !!document.fullscreenElement;
+addEventListener('scroll', () => {
+  if (!layoutPaused()) normalScrollY = scrollY;
+}, { passive: true });
 // Count authored tracks, not implicit zero-width tracks left by an old wide card
 // while a desktop grid is shrinking to a single phone column.
 const colsNow = () => {
@@ -284,6 +290,7 @@ function letterbox(el) {
 function chooseSpan(el, cols) {
   // A tall post/quote is not a reason to enlarge its media across the feed.
   // Respect the user's single-column zoom, but automatic widening stays compact.
+  el.style.gridColumnStart = 'auto';
   el.style.gridColumnEnd = 'span 1';
   const baseWidth = el.offsetWidth;
   const maxWidth = Math.max(baseWidth, 640);
@@ -300,27 +307,66 @@ function chooseSpan(el, cols) {
   el.style.gridColumnEnd = `span ${best}`;
 }
 function fitRows(el) {
+  if (layoutPaused()) return;
   // Layout height: ignores the zoom animation's scale, which would give a wrong span.
   const h = el.offsetHeight;
   if (h) el.style.gridRowEnd = `span ${Math.ceil((h + GAP) / ROW)}`;
 }
 const rowWatch = new ResizeObserver(entries => { for (const e of entries) fitRows(e.target); });
 function layoutCards(cards = feedEl.children) {
-  const list = [...cards], cols = colsNow();
+  const list = [...cards];
+  if (layoutPaused()) {
+    for (const el of list) pendingFullscreenCards.add(el);
+    return;
+  }
+  const cols = colsNow();
+  lastCols = cols;
   for (const el of list) if (el.classList.contains('card')) chooseSpan(el, cols);
+  // Dense auto-placement always puts wide cards on the leftmost available tracks.
+  // Alternate their side so a three-track feed does not become a permanent 2+1 split.
+  let wide = 0;
+  for (const el of feedEl.children) {
+    const span = Number(el.style.gridColumnEnd.replace('span ', '')) || 1;
+    el.style.gridColumnStart = span > 1 && span < cols ? String((wide++ % 2) ? cols - span + 1 : 1) : 'auto';
+  }
   for (const el of list) fitRows(el);
 }
 function prepareCards(cards) {
   for (const el of cards) {
     rowWatch.observe(el);
     // Media without recorded size: decide the span once it has loaded.
-    el.addEventListener('load', () => layoutCards([el]), true);
+    el.addEventListener('load', event => {
+      if (!event.target.closest?.('.embed')) layoutCards([el]);
+    }, true);
     el.addEventListener('loadedmetadata', () => layoutCards([el]), true);
   }
   layoutCards(cards);
 }
 let lastCols = 0;
-addEventListener('resize', () => { const c = colsNow(); if (c !== lastCols) { lastCols = c; layoutCards(); } });
+addEventListener('resize', () => {
+  if (!layoutPaused() && colsNow() !== lastCols) layoutCards();
+});
+document.addEventListener('fullscreenchange', () => {
+  if (document.fullscreenElement) {
+    fullscreenScrollY ??= normalScrollY;
+    return;
+  }
+  if (fullscreenScrollY === null) return;
+  // Wait until the windowed viewport and its CSS heights have settled.
+  requestAnimationFrame(() => {
+    if (document.fullscreenElement || fullscreenScrollY === null) return;
+    const scroll = fullscreenScrollY;
+    fullscreenScrollY = null;
+    if (colsNow() !== lastCols) layoutCards();
+    else if (pendingFullscreenCards.size) layoutCards([...pendingFullscreenCards].filter(el => el.parentElement === feedEl));
+    pendingFullscreenCards.clear();
+    for (const el of feedEl.children) fitRows(el);
+    scrollTo({ top: scroll, behavior: 'instant' });
+    normalScrollY = scrollY;
+    moreObserver.unobserve(moreEl);
+    moreObserver.observe(moreEl);
+  });
+});
 
 const CARD_MIN = 240, CARD_MAX = 1000;
 let cardW = 440;
@@ -373,7 +419,9 @@ addEventListener('wheel', e => {
 }, { passive: false });
 document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => { b.closest('dialog').close(); refresh(); }));
 
-new IntersectionObserver(es => { if (es.some(x => x.isIntersecting)) load(false); }, { rootMargin: '1200px' }).observe($('#more'));
+const moreEl = $('#more');
+const moreObserver = new IntersectionObserver(es => { if (es.some(x => x.isIntersecting)) load(false); }, { rootMargin: '1200px' });
+moreObserver.observe(moreEl);
 
 setInterval(() => { if (!document.hidden) facets(); }, 60000);
 

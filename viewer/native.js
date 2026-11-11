@@ -275,7 +275,8 @@
   function articleHtml(a) {
     const out = [];
     for (const b of a.blocks || []) {
-      if (b.t === 'img') out.push(`<img src="${esc(src(b.src))}" alt="${esc(b.alt || '')}" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()"${b.w && b.h ? ` style="aspect-ratio:${b.w} / ${b.h}"` : ''}>`);
+      if (b.t === 'img' && /(?:^|[\/_.-])(?:ava(?:tar)?|author|profile|user|placeholder|favicon|logo|badge)(?:[\/_.-]|$)/i.test(b.src || '')) continue;
+      if (b.t === 'img') out.push(`<img src="${esc(src(b.src))}" alt="${esc(b.alt || '')}" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`);
       else if (b.t === 'h') out.push(`<h4>${esc(b.text)}</h4>`);
       else if (b.t === 'li') out.push(`<p class="li">${esc(b.text)}</p>`);
       else if (b.t === 'q') out.push(`<blockquote>${esc(b.text)}</blockquote>`);
@@ -283,6 +284,21 @@
       else out.push(`<p>${esc(b.text)}</p>`);
     }
     return out.join('');
+  }
+  // Unknown image sizes are checked after decoding. Small real pictures stay at native size.
+  function guardWebImages(box) {
+    for (const image of box.querySelectorAll('img')) {
+      const size = () => {
+        const w = image.naturalWidth, h = image.naturalHeight;
+        if (!w || !h) return;
+        image.style.aspectRatio = 'auto';
+        image.style.height = 'auto';
+        if (w <= 128 && h <= 128) { image.remove(); return; }
+        if (w < 480) { image.style.width = 'auto'; image.style.maxWidth = Math.min(w, 480) + 'px'; image.style.height = 'auto'; }
+      };
+      image.addEventListener('load', size, { once: true });
+      if (image.complete) size();
+    }
   }
   const aio = new IntersectionObserver(entries => {
     for (const e of entries) {
@@ -300,6 +316,7 @@
           card?.querySelector('.web-text')?.remove();
           card?.querySelector('.web-img')?.remove();
           box.innerHTML = own.innerHTML;
+          guardWebImages(box);
           box.hidden = false;
           return;
         }
@@ -307,6 +324,7 @@
         card?.querySelector('.web-text')?.remove();
         if (a.blocks.some(b => b.t === 'img')) card?.querySelector('.web-img')?.remove();
         box.innerHTML = articleHtml(a);
+        guardWebImages(box);
         box.hidden = false;
       }, () => {});
     }
@@ -340,15 +358,24 @@
     f.allowFullscreen = true;
     f.loading = 'eager';
     f.referrerPolicy = 'strict-origin-when-cross-origin'; // YouTube's player refuses to run without it
-    if (e.ratio) f.style.aspectRatio = e.ratio; else f.style.height = e.height + 'px';
-    if (e.ratio === '9 / 16') f.classList.add('tall');
-    box.appendChild(f);
+    if (e.ratio) {
+      // The player can enter the fullscreen top layer. Its slot stays in the card.
+      const slot = document.createElement('div');
+      slot.className = 'embed-player';
+      slot.style.aspectRatio = e.ratio;
+      if (e.ratio === '9 / 16') slot.classList.add('tall');
+      slot.append(f);
+      box.append(slot);
+    } else {
+      f.style.height = e.height + 'px';
+      box.append(f);
+    }
   }
 
   // Embeds that report their height (Instagram, Bluesky, Reddit, Threads) resize to fit.
   window.addEventListener('message', ev => {
     const frame = [...document.querySelectorAll('.embed iframe')].find(f => f.contentWindow === ev.source);
-    if (!frame || frame.style.aspectRatio) return;
+    if (!frame || frame.closest('.embed-player')) return;
     let d = ev.data;
     if (typeof d === 'string') { try { d = JSON.parse(d); } catch { return; } }
     const h = Number(d?.details?.height ?? d?.height ?? (d?.type === 'resize.embed' ? d.data : undefined));

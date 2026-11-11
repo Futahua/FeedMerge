@@ -39,7 +39,8 @@ export function articleBlocks(html, url) {
       // Icons, logos and badges (an author silhouette, an "Ask AI" badge) are not article pictures: SVGs, and
       // anything the page itself sizes under 100 px, would otherwise be drawn as a full-width image.
       const w = Number(im?.getAttribute('width')) || 0, h = Number(im?.getAttribute('height')) || 0;
-      const icon = /.svg(?:[?#]|$)/i.test(src || '') || (w && w < 100) || (h && h < 100);
+      const decorative = /(?:^|[\/_.-])(?:ava(?:tar)?|author|profile|user|default[-_]?(?:avatar|user)|placeholder|favicon|logo|badge)(?:[\/_.-]|$)/i.test(src || '');
+      const icon = decorative || /.svg(?:[?#]|$)/i.test(src || '') || (w && w < 100) || (h && h < 100);
       if (src && !icon && !seenImg.has(src) && !/^data:/.test(src)) {
         seenImg.add(src);
         blocks.push({ t: 'img', src, w: Number(im.getAttribute('width')) || undefined, h: Number(im.getAttribute('height')) || undefined, alt: clean(im.getAttribute('alt')) || undefined });
